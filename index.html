@@ -2,132 +2,180 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gestione Presenze Giocatori</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Gestione Presenze PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
-        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: 600; }
-        .tab-inactive { color: #6b7280; font-weight: 400; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --primary: #2563eb;
+            --primary-light: #eff6ff;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg-color: #f8fafc;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-color); 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        /* Ocultar barra de scroll pero permitir scroll */
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Componentes UI Pro */
+        .glass-modal { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+        .card-pro { transition: all 0.2s ease; border: 1px solid #f1f5f9; }
+        .card-pro:active { transform: scale(0.98); }
+        
         .avatar-img { object-fit: cover; width: 100%; height: 100%; border-radius: 50%; }
         
-        /* Toggle Switch Styles */
-        .status-btn { transition: all 0.2s ease-in-out; }
-        .status-present { background-color: #10b981; color: white; border-color: #10b981; }
-        .status-absent { background-color: #ef4444; color: white; border-color: #ef4444; }
-        .status-none { background-color: #e5e7eb; color: #6b7280; border-color: #d1d5db; }
+        /* Toggle Switch Styles - Enhanced */
+        .status-btn { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .status-present { background-color: var(--success); color: white; border-color: var(--success); transform: scale(1.05); box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); }
+        .status-absent { background-color: var(--danger); color: white; border-color: var(--danger); transform: scale(1.05); box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3); }
+        .status-none { background-color: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
         
-        /* Hide scrollbar */
-        ::-webkit-scrollbar { display: none; }
+        /* Bottom Nav Pro */
+        .nav-item { transition: all 0.3s ease; }
+        .nav-active .nav-pill { background-color: var(--primary-light); color: var(--primary); font-weight: 600; padding: 0.5rem 1rem; border-radius: 9999px; }
+        .nav-inactive { color: #64748b; }
+        .nav-inactive .nav-pill { padding: 0.5rem 1rem; }
+
+        /* Toast Notifications */
+        #toast-container { pointer-events: none; }
+        .toast { transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); transform: translateY(150%); opacity: 0; }
+        .toast.show { transform: translateY(0); opacity: 1; }
 
         /* Cloud Sync Banner */
         #cloudSyncBanner { transition: top 0.3s ease-in-out; }
         .banner-visible { top: 0; }
         .banner-hidden { top: -50px; }
         
-        /* Mini Avatars for Teams */
+        /* Mini Avatars */
         .avatar-group { display: flex; align-items: center; }
-        .avatar-mini { width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; margin-left: -10px; background-color: #dbeafe; color: #2563eb; display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold; overflow: hidden; }
+        .avatar-mini { width: 36px; height: 36px; border-radius: 50%; border: 2px solid white; margin-left: -12px; background-color: var(--primary-light); color: var(--primary); display: flex; justify-content: center; align-items: center; font-size: 11px; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .avatar-mini:first-child { margin-left: 0; }
-        .avatar-mini img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-mini img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+        /* Pulsing Badge */
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .badge-new { animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     </style>
 </head>
-<body class="text-gray-800 flex flex-col h-screen overflow-hidden relative">
+<body class="text-slate-800 flex flex-col h-screen overflow-hidden relative selection:bg-blue-200">
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="fixed bottom-24 left-0 w-full flex flex-col items-center gap-2 z-50 px-4"></div>
 
     <!-- Cloud Sync Status Banner -->
-    <div id="cloudSyncBanner" class="fixed left-0 w-full bg-yellow-500 text-white text-xs font-bold text-center py-1 z-50 banner-visible shadow-md flex justify-center items-center gap-2">
+    <div id="cloudSyncBanner" class="fixed left-0 w-full bg-blue-600 text-white text-xs font-semibold text-center py-1.5 z-50 banner-visible shadow-md flex justify-center items-center gap-2">
         <i class="fa-solid fa-cloud-arrow-up animate-bounce"></i> <span id="syncText">Sincronizzazione in corso...</span>
     </div>
 
-    <!-- Header -->
-    <header class="bg-blue-600 text-white shadow-md z-10 p-4 pt-8">
+    <!-- Header PRO -->
+    <header class="bg-white text-slate-800 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] z-10 p-5 pt-10 sticky top-0">
         <div class="max-w-3xl mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold flex items-center gap-2">
-                <i class="fa-solid fa-clipboard-user"></i> Presenze 26/27
-            </h1>
-            <div id="currentDateDisplay" class="text-sm font-medium opacity-90"></div>
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2 text-blue-600">
+                    Aretusa <span class="text-slate-800">App</span>
+                </h1>
+                <p id="currentDateDisplay" class="text-xs text-slate-500 font-medium mt-0.5 uppercase tracking-wider"></p>
+            </div>
+            <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
+                <i class="fa-solid fa-shield-halved text-lg"></i>
+            </div>
         </div>
     </header>
 
     <!-- Main Content Area -->
-    <main class="flex-1 overflow-y-auto pb-20 w-full max-w-3xl mx-auto" id="mainContainer">
+    <main class="flex-1 overflow-y-auto pb-28 w-full max-w-3xl mx-auto bg-slate-50" id="mainContainer">
         
         <!-- View 1: Appello (Roll Call) -->
-        <div id="viewAppello" class="p-4 space-y-4">
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <label class="block text-sm font-semibold text-gray-600 mb-1">Seleziona Squadra</label>
-                <select id="teamSelector" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
-                    <option value="">Caricamento...</option>
-                </select>
+        <div id="viewAppello" class="p-4 space-y-5">
+            <!-- Controls Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-4">
+                <div class="flex-1">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Squadra</label>
+                    <select id="teamSelector" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-base rounded-xl focus:ring-2 focus:ring-blue-500 block p-3 transition-shadow">
+                        <option value="">Caricamento...</option>
+                    </select>
+                </div>
+                <div class="flex-1">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data Appello</label>
+                    <input type="date" id="attendanceDate" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-base rounded-xl focus:ring-2 focus:ring-blue-500 block p-3 transition-shadow">
+                </div>
             </div>
-            
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
-                <label class="block text-sm font-semibold text-gray-600">Data Appello</label>
-                <input type="date" id="attendanceDate" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2">
+
+            <!-- Header and Mass Action -->
+            <div class="flex justify-between items-end px-1" id="appelloHeaderStats" style="display: none;">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">Elenco Giocatori</h2>
+                    <p class="text-sm text-slate-500" id="attendanceStats">0 Presenti • 0 Assenti</p>
+                </div>
+                <button onclick="markAllPresent()" class="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-check-double"></i> Tutti Presenti
+                </button>
             </div>
 
             <!-- Players List -->
-            <div id="playersList" class="space-y-3 mt-4">
-                <div class="text-center text-gray-500 mt-10 py-10">
-                    <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-3 text-gray-300"></i>
-                    <p>Connessione al Cloud in corso...</p>
+            <div id="playersList" class="space-y-3 mt-2">
+                <div class="text-center text-slate-400 mt-12 py-10">
+                    <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-4 text-slate-300"></i>
+                    <p class="font-medium">Connessione al Database...</p>
                 </div>
             </div>
         </div>
 
         <!-- View 2: Storico (History) -->
-        <div id="viewStorico" class="p-4 space-y-4 hidden">
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 grid grid-cols-2 gap-4">
+        <div id="viewStorico" class="p-4 space-y-5 hidden">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">Mese</label>
-                    <select id="monthSelector" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2">
-                        <option value="01">Gennaio</option>
-                        <option value="02">Febbraio</option>
-                        <option value="03">Marzo</option>
-                        <option value="04">Aprile</option>
-                        <option value="05">Maggio</option>
-                        <option value="06">Giugno</option>
-                        <option value="07">Luglio</option>
-                        <option value="08">Agosto</option>
-                        <option value="09">Settembre</option>
-                        <option value="10">Ottobre</option>
-                        <option value="11">Novembre</option>
-                        <option value="12">Dicembre</option>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Mese</label>
+                    <select id="monthSelector" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-sm rounded-xl p-3">
+                        <option value="01">Gennaio</option><option value="02">Febbraio</option><option value="03">Marzo</option>
+                        <option value="04">Aprile</option><option value="05">Maggio</option><option value="06">Giugno</option>
+                        <option value="07">Luglio</option><option value="08">Agosto</option><option value="09">Settembre</option>
+                        <option value="10">Ottobre</option><option value="11">Novembre</option><option value="12">Dicembre</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">Anno</label>
-                    <select id="yearSelector" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2">
-                        <option value="2026">2026</option>
-                        <option value="2027">2027</option>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Anno</label>
+                    <select id="yearSelector" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-sm rounded-xl p-3">
+                        <option value="2026">2026</option><option value="2027">2027</option>
                     </select>
                 </div>
                 <div class="col-span-2">
-                     <label class="block text-sm font-semibold text-gray-600 mb-1">Filtra per Squadra</label>
+                     <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Filtra Squadra</label>
                      <div class="flex gap-2">
-                         <select id="historyTeamSelector" class="flex-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2">
+                         <select id="historyTeamSelector" class="flex-1 bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-sm rounded-xl p-3">
                             <option value="ALL">Tutte le squadre</option>
                          </select>
-                         <button onclick="exportToCSV()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm">
-                             <i class="fa-solid fa-file-csv"></i> Esporta
+                         <button onclick="exportToCSV()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm">
+                             <i class="fa-solid fa-file-excel"></i> Excel
                          </button>
                      </div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left text-gray-500">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                    <table class="w-full text-sm text-left text-slate-600">
+                        <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
                             <tr>
-                                <th scope="col" class="px-4 py-3">Giocatore</th>
-                                <th scope="col" class="px-4 py-3 text-center text-green-600"><i class="fa-solid fa-check"></i> Presenze</th>
-                                <th scope="col" class="px-4 py-3 text-center text-red-600"><i class="fa-solid fa-xmark"></i> Assenze</th>
+                                <th scope="col" class="px-5 py-4 font-bold">Giocatore</th>
+                                <th scope="col" class="px-5 py-4 text-center text-emerald-600 font-bold"><i class="fa-solid fa-check"></i> Pres</th>
+                                <th scope="col" class="px-5 py-4 text-center text-red-500 font-bold"><i class="fa-solid fa-xmark"></i> Ass</th>
                             </tr>
                         </thead>
-                        <tbody id="historyTableBody">
+                        <tbody id="historyTableBody" class="divide-y divide-slate-100">
                             <!-- Populated by JS -->
                         </tbody>
                     </table>
@@ -135,30 +183,38 @@
             </div>
         </div>
 
-        <!-- View 3: Giocatori (Roster / Add new) -->
-        <div id="viewGiocatori" class="p-4 space-y-4 hidden">
-            <div class="flex justify-between items-center mb-2">
-                <h2 class="text-lg font-bold text-gray-800">Anagrafica Giocatori</h2>
-                <button onclick="openPlayerModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-sm transition-colors flex items-center gap-2">
+        <!-- View 3: Squadre (Dashboard) -->
+        <div id="viewSquadre" class="p-4 space-y-4 hidden">
+            <div class="flex justify-between items-end mb-2 px-1">
+                <h2 class="text-xl font-bold text-slate-800">Dashboard Equipos</h2>
+                <span id="totalPlayersBadge" class="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">0 Totali</span>
+            </div>
+            <div id="squadreList" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- View 4: Giocatori (Roster) -->
+        <div id="viewGiocatori" class="p-4 space-y-5 hidden">
+            <div class="flex justify-between items-center px-1">
+                <h2 class="text-xl font-bold text-slate-800">Anagrafica</h2>
+                <button onclick="openPlayerModal()" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-5 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 text-sm">
                     <i class="fa-solid fa-plus"></i> Nuovo
                 </button>
             </div>
             
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                        <i class="fa-solid fa-search text-slate-400"></i>
+                    </div>
+                    <input type="text" id="playerSearchInput" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-base rounded-xl focus:ring-2 focus:ring-blue-500 block w-full pl-11 p-3.5 transition-shadow" placeholder="Cerca per nome o cognome...">
+                </div>
+                
                 <div>
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">Filtra per Squadra</label>
-                    <select id="rosterTeamSelector" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
+                    <select id="rosterTeamSelector" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-sm rounded-xl p-3 focus:ring-2 focus:ring-blue-500">
                         <option value="ALL">Tutte le squadre</option>
                     </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">Cerca Giocatore</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <i class="fa-solid fa-search text-gray-400"></i>
-                        </div>
-                        <input type="text" id="playerSearchInput" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5" placeholder="Nome o cognome...">
-                    </div>
                 </div>
             </div>
 
@@ -166,65 +222,64 @@
                 <!-- Populated by JS -->
             </div>
         </div>
-
-        <!-- View 4: Squadre (Visual Dashboard) -->
-        <div id="viewSquadre" class="p-4 space-y-4 hidden">
-            <div class="flex justify-between items-center mb-2">
-                <h2 class="text-lg font-bold text-gray-800">Panoramica Squadre</h2>
-            </div>
-            <div id="squadreList" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
-                <!-- Populated by JS -->
-            </div>
-        </div>
     </main>
 
-    <!-- Bottom Navigation (Now with 4 tabs) -->
-    <nav class="fixed bottom-0 w-full bg-white border-t border-gray-200 z-10 pb-safe">
-        <div class="max-w-3xl mx-auto flex">
-            <button onclick="switchTab('appello')" id="tabAppello" class="flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none">
-                <i class="fa-solid fa-list-check text-xl"></i>
-                <span class="text-[10px] sm:text-xs">Appello</span>
+    <!-- Bottom Navigation PRO -->
+    <nav class="fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200 z-40 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+        <div class="max-w-3xl mx-auto flex justify-between px-2 py-2">
+            <button onclick="switchTab('appello')" id="tabAppello" class="flex-1 flex flex-col items-center justify-center gap-1 nav-item nav-active focus:outline-none">
+                <div class="nav-pill flex flex-col items-center justify-center w-16 h-12">
+                    <i class="fa-solid fa-list-check text-xl mb-0.5"></i>
+                    <span class="text-[10px] uppercase tracking-wider">Appello</span>
+                </div>
             </button>
-            <button onclick="switchTab('storico')" id="tabStorico" class="flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none">
-                <i class="fa-solid fa-chart-pie text-xl"></i>
-                <span class="text-[10px] sm:text-xs">Storico</span>
+            <button onclick="switchTab('storico')" id="tabStorico" class="flex-1 flex flex-col items-center justify-center gap-1 nav-item nav-inactive focus:outline-none">
+                <div class="nav-pill flex flex-col items-center justify-center w-16 h-12">
+                    <i class="fa-solid fa-chart-pie text-xl mb-0.5"></i>
+                    <span class="text-[10px] uppercase tracking-wider">Storico</span>
+                </div>
             </button>
-            <button onclick="switchTab('squadre')" id="tabSquadre" class="flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none">
-                <i class="fa-solid fa-layer-group text-xl"></i>
-                <span class="text-[10px] sm:text-xs">Squadre</span>
+            <button onclick="switchTab('squadre')" id="tabSquadre" class="flex-1 flex flex-col items-center justify-center gap-1 nav-item nav-inactive focus:outline-none">
+                <div class="nav-pill flex flex-col items-center justify-center w-16 h-12">
+                    <i class="fa-solid fa-layer-group text-xl mb-0.5"></i>
+                    <span class="text-[10px] uppercase tracking-wider">Squadre</span>
+                </div>
             </button>
-            <button onclick="switchTab('giocatori')" id="tabGiocatori" class="flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none">
-                <i class="fa-solid fa-users text-xl"></i>
-                <span class="text-[10px] sm:text-xs">Giocatori</span>
+            <button onclick="switchTab('giocatori')" id="tabGiocatori" class="flex-1 flex flex-col items-center justify-center gap-1 nav-item nav-inactive focus:outline-none">
+                <div class="nav-pill flex flex-col items-center justify-center w-16 h-12 relative">
+                    <i class="fa-solid fa-users text-xl mb-0.5"></i>
+                    <span class="text-[10px] uppercase tracking-wider">Roster</span>
+                    <span id="navBadgeNew" class="absolute top-1 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white hidden"></span>
+                </div>
             </button>
         </div>
     </nav>
 
-    <!-- Photo Modal -->
-    <div id="photoModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl transform transition-all flex flex-col items-center">
-            <div class="w-full flex justify-end">
-                <button onclick="closePhotoModal()" class="text-gray-400 hover:text-gray-700">
-                    <i class="fa-solid fa-times text-xl"></i>
-                </button>
+    <!-- Photo Modal PRO -->
+    <div id="photoModal" class="fixed inset-0 glass-modal z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col items-center relative" id="photoModalContent">
+            <button onclick="closePhotoModal()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            
+            <div class="mt-4 mb-2 text-center">
+                <h3 class="text-xl font-bold text-slate-800 mb-1" id="modalPlayerName">Nome</h3>
+                <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase" id="modalPlayerTeam">Squadra</span>
             </div>
             
-            <h3 class="text-lg font-bold text-gray-900 mb-1" id="modalPlayerName">Nome Giocatore</h3>
-            <p class="text-sm text-gray-500 mb-6" id="modalPlayerTeam">Squadra</p>
-            
-            <div class="w-40 h-40 rounded-full border-4 border-blue-100 bg-gray-100 flex items-center justify-center overflow-hidden mb-6 relative group">
+            <div class="w-48 h-48 rounded-full border-4 border-slate-50 bg-slate-100 flex items-center justify-center overflow-hidden my-6 shadow-inner relative group">
                 <img id="modalPreviewImg" class="avatar-img hidden" src="" alt="Preview">
-                <i id="modalPreviewIcon" class="fa-solid fa-camera text-4xl text-gray-400"></i>
+                <i id="modalPreviewIcon" class="fa-solid fa-user-astronaut text-5xl text-slate-300"></i>
             </div>
             
             <div class="w-full space-y-3">
-                <label for="cameraInput" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl cursor-pointer transition-colors">
+                <label for="cameraInput" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-4 rounded-xl cursor-pointer transition-colors shadow-sm active:scale-95">
                     <i class="fa-solid fa-camera"></i>
-                    Scatta / Scegli Foto
+                    Cambia Foto
                 </label>
                 <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
                 
-                <button id="removePhotoBtn" onclick="removePhoto()" class="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-red-600 font-semibold py-3 px-4 rounded-xl transition-colors hidden">
+                <button id="removePhotoBtn" onclick="removePhoto()" class="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 font-semibold py-3.5 px-4 rounded-xl transition-colors hidden active:scale-95">
                     <i class="fa-solid fa-trash-can"></i>
                     Rimuovi Foto
                 </button>
@@ -235,88 +290,89 @@
     <!-- Hidden Canvas for Image Compression -->
     <canvas id="compressCanvas" class="hidden"></canvas>
 
-    <!-- Player Form Modal -->
-    <div id="playerModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl transform transition-all flex flex-col max-h-[90vh] overflow-y-auto">
-            <div class="w-full flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-gray-900" id="playerModalTitle">Aggiungi Giocatore</h3>
-                <button onclick="closePlayerModal()" class="text-gray-400 hover:text-gray-700">
-                    <i class="fa-solid fa-times text-xl"></i>
+    <!-- Player Form Modal PRO -->
+    <div id="playerModal" class="fixed inset-0 glass-modal z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-y-auto" id="playerModalContent">
+            <div class="w-full flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-slate-800" id="playerModalTitle">Aggiungi Giocatore</h3>
+                <button onclick="closePlayerModal()" class="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
             
             <form id="playerForm" class="space-y-4" onsubmit="savePlayer(event)">
                 <input type="hidden" id="editPlayerId">
+                <input type="hidden" id="editPlayerIsNew">
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-600 mb-1">Nome *</label>
-                        <input type="text" id="playerName" required class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nome *</label>
+                        <input type="text" id="playerName" required class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 text-slate-800">
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-600 mb-1">Cognome *</label>
-                        <input type="text" id="playerSurname" required class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Cognome *</label>
+                        <input type="text" id="playerSurname" required class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 text-slate-800">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">Squadra *</label>
-                    <input type="text" id="playerTeam" required list="teamOptions" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Seleziona o scrivi...">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex justify-between">
+                        Squadra * <span class="text-[10px] text-blue-500 normal-case">(DA ASSEGNARE = In attesa)</span>
+                    </label>
+                    <input type="text" id="playerTeam" required list="teamOptions" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold" placeholder="Scrivi o seleziona...">
                     <datalist id="teamOptions"></datalist>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-600 mb-1">Telefono (Contatto)</label>
-                    <input type="tel" id="playerPhone" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Es. 333 1234567">
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Telefono / WhatsApp</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                            <i class="fa-solid fa-phone text-slate-400"></i>
+                        </div>
+                        <input type="tel" id="playerPhone" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 pl-11 focus:ring-2 focus:ring-blue-500 text-slate-800" placeholder="Es. 333 1234567">
+                    </div>
                 </div>
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-semibold text-gray-600 mb-1">Data Nascita</label>
-                        <input type="date" id="playerBirth" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nascita</label>
+                        <input type="date" id="playerBirth" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 text-slate-800 text-sm">
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-gray-600 mb-1">Data Iscrizione</label>
-                        <input type="date" id="playerEntry" required class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Iscrizione</label>
+                        <input type="date" id="playerEntry" required class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 text-slate-800 text-sm">
                     </div>
                 </div>
 
-                <div class="pt-4 flex gap-3">
-                    <button type="button" id="deletePlayerBtn" onclick="openConfirmDelete()" class="hidden flex-1 bg-red-100 text-red-600 font-semibold py-3 rounded-xl hover:bg-red-200 transition-colors">Elimina</button>
-                    <button type="submit" class="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors">Salva nel Cloud</button>
+                <div class="pt-6 flex gap-3">
+                    <button type="button" id="deletePlayerBtn" onclick="deletePlayer()" class="hidden w-14 bg-red-50 text-red-600 font-semibold py-3.5 rounded-xl hover:bg-red-100 transition-colors active:scale-95 flex items-center justify-center">
+                        <i class="fa-solid fa-trash-can text-lg"></i>
+                    </button>
+                    <button type="submit" class="flex-1 bg-slate-900 text-white font-semibold py-3.5 rounded-xl hover:bg-slate-800 transition-colors active:scale-95 shadow-md">
+                        <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Salva nel Cloud
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Custom Confirm Delete Modal -->
-    <div id="confirmModal" class="fixed inset-0 bg-black/70 z-[60] hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform transition-all">
-            <div class="w-16 h-16 rounded-full bg-red-100 text-red-500 flex items-center justify-center mx-auto mb-4 text-3xl">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-            </div>
-            <h3 class="text-lg font-bold text-gray-900 mb-2">Conferma Eliminazione</h3>
-            <p class="text-sm text-gray-500 mb-6">Sei sicuro di voler eliminare questo giocatore? L'azione è irreversibile.</p>
-            <div class="flex gap-3">
-                <button onclick="closeConfirmDelete()" class="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-200 transition-colors">Annulla</button>
-                <button id="confirmDeleteBtn" onclick="deletePlayer()" class="flex-1 bg-red-600 text-white font-semibold py-3 rounded-xl hover:bg-red-700 transition-colors">Elimina</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- FIREBASE AND APP LOGIC -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // ==============================================================
+        // CONFIGURACIÓN FIREBASE (Mantén esto como estaba en tu versión funcional)
         const firebaseConfig = {
-          apiKey: "AIzaSyAEzLuN2TT77foODRGwAo3UY16VolP9nzY",
-          authDomain: "gestione-presenze-b52c7.firebaseapp.com",
-          projectId: "gestione-presenze-b52c7",
-          storageBucket: "gestione-presenze-b52c7.firebasestorage.app",
-          messagingSenderId: "8099106330",
-          appId: "1:8099106330:web:a69dfd06a4662bd8474ba3"
+            apiKey: "TU_API_KEY", // <--- Recuerda reponer esto
+            authDomain: "gestione-presenze-b52c7.firebaseapp.com", // <--- y esto
+            projectId: "gestione-presenze-b52c7",
+            storageBucket: "gestione-presenze-b52c7.firebasestorage.app",
+            messagingSenderId: "8099106330",
+            appId: "1:8099106330:web:a69dfd06a4662bd8474ba3"
         };
+        // ==============================================================
         
         // Init Firebase
         const app = initializeApp(firebaseConfig);
@@ -327,13 +383,9 @@
         let players = [];
         let attendance = {}; 
         let currentEditingPlayerId = null;
-        
-        // Rutas fijas a tu BD Cloud (no más modo test sandbox)
-        const getPlayersPath = () => `players`; 
-        const getAttendancePath = () => `attendance`;
 
-        // Datos del PDF por si se borrase la BD (backup inicial)
-        const initialData = [{"id":"p1","name":"Sveva","surname":"Caruso","team":"BIMBA","telefono":"3899980000","dataNascita":"2018-05-23"},{"id":"p2","name":"Tommaso","surname":"Spada","team":"BIMBO","telefono":"3715346633","dataNascita":"2020-08-01"},{"id":"p3","name":"Ginevra","surname":"Barranco","team":"U14 FEMMINILE","telefono":"3200108107","dataNascita":"2016-09-29"},{"id":"p4","name":"Viola","surname":"Bottaro","team":"U14 FEMMINILE","telefono":"3461900038","dataNascita":"2016-04-02"},{"id":"p5","name":"Bianca","surname":"Bottaro","team":"U14 FEMMINILE","telefono":"3461900038","dataNascita":"2016-04-02"},{"id":"p6","name":"Annachiara","surname":"Lorefice","team":"U14 FEMMINILE","telefono":"3332106049","dataNascita":"2015-08-28"},{"id":"p7","name":"Ludovica Lucia","surname":"Lorefice","team":"U14 FEMMINILE","telefono":"3332106049","dataNascita":"2015-12-10"},{"id":"p8","name":"Agnese","surname":"Lutri","team":"U14 FEMMINILE","telefono":"3358415319","dataNascita":"2014-01-01"},{"id":"p9","name":"Yassmine","surname":"Ben hadda","team":"U14 FEMMINILE","telefono":"3296943861","dataNascita":"2013-04-07"},{"id":"p10","name":"Rachele","surname":"Santoro","team":"U14 FEMMINILE","telefono":"3519957519","dataNascita":"2013-08-13"},{"id":"p11","name":"Vittoria","surname":"Carpanzano","team":"U14 FEMMINILE","telefono":"3273386743","dataNascita":"2014-03-07"},{"id":"p12","name":"Samuele","surname":"Fazzina","team":"U14A","telefono":"3383066302","dataNascita":"2013-12-23"},{"id":"p13","name":"Alessio","surname":"Valente","team":"U14A","telefono":"3298275557","dataNascita":"2014-09-09"},{"id":"p14","name":"Vincenzo","surname":"Sampieri","team":"U14A","telefono":"3803871388","dataNascita":"2013-06-25"},{"id":"p15","name":"Francesco","surname":"Bisicchia","team":"U14A","telefono":"3289542081","dataNascita":"2013-04-06"},{"id":"p16","name":"Federico","surname":"Scatà","team":"U14A","telefono":"3288688962","dataNascita":"2013-03-19"},{"id":"p17","name":"Nicolò","surname":"Licitra","team":"U14A","telefono":"3336841533","dataNascita":"2013-11-28"},{"id":"p18","name":"Riccardo","surname":"Bottaro","team":"U14A","telefono":"3461900038","dataNascita":"2013-03-13"},{"id":"p19","name":"Elia","surname":"Ramondetta","team":"U14A","telefono":"3513359100","dataNascita":"2013-10-23"},{"id":"p20","name":"Alessandro","surname":"Burgio","team":"U14A","telefono":"3456900992","dataNascita":"2013-11-15"},{"id":"p21","name":"Mariano","surname":"Garofalo","team":"U14A","telefono":"3451155001","dataNascita":"2014-02-14"},{"id":"p22","name":"Giovanni","surname":"Russo","team":"U14B","telefono":"3288174699","dataNascita":"2015-06-25"},{"id":"p23","name":"Mario","surname":"Russo","team":"U14B","telefono":"3288174699","dataNascita":"2015-06-25"},{"id":"p24","name":"Davide","surname":"Tine'","team":"U14B","telefono":"3895377563","dataNascita":"2016-02-17"},{"id":"p25","name":"Daniele","surname":"Lamera","team":"U14B","telefono":"3397048336","dataNascita":"2016-09-28"},{"id":"p26","name":"Andrea","surname":"Monteneri","team":"U14B","telefono":"3471387017","dataNascita":"2016-02-10"},{"id":"p27","name":"Giordano","surname":"Torneo","team":"U14B","telefono":"3316348298","dataNascita":"2015-04-02"},{"id":"p28","name":"Alessandro","surname":"Giunta","team":"U14B","telefono":"3400935658","dataNascita":"2016-04-11"},{"id":"p29","name":"Brando","surname":"Campisi","team":"U14B","telefono":"3803421368","dataNascita":"2016-01-26"},{"id":"p30","name":"Christian","surname":"Randazzo","team":"U14B","telefono":"3338570968","dataNascita":"2016-09-25"},{"id":"p31","name":"Federico","surname":"Tripodi","team":"U14B","telefono":"3200878425","dataNascita":"2017-06-23"},{"id":"p32","name":"Vittorio Ascanio","surname":"Assenza","team":"U14B","telefono":"3394943830","dataNascita":"2015-05-03"},{"id":"p33","name":"Leonardo","surname":"Assenza","team":"U14B","telefono":"3394943830","dataNascita":"2017-02-02"},{"id":"p34","name":"FEDERICO","surname":"DI ROSOLIN","team":"U14B","telefono":"3201186384","dataNascita":"2015-01-12"},{"id":"p35","name":"Andrea","surname":"Moscuzza","team":"U14B","telefono":"3421938861","dataNascita":"2013-02-26"},{"id":"p36","name":"Raffaele","surname":"Barranco","team":"U16A","telefono":"3200108107","dataNascita":"2012-10-23"},{"id":"p37","name":"Lorenzo","surname":"Rizza","team":"U16A","telefono":"3319472526","dataNascita":"2012-08-16"},{"id":"p38","name":"Riccardo","surname":"Liistro","team":"U16A","telefono":"3409550494","dataNascita":"2012-09-04"},{"id":"p39","name":"Manuele","surname":"Mazzullo","team":"U16A","telefono":"3208060561","dataNascita":"2012-05-13"},{"id":"p40","name":"Giuseppe","surname":"Rindinella","team":"U16A","telefono":"3293652745","dataNascita":"2011-08-22"},{"id":"p41","name":"Mattia","surname":"Primavera","team":"U16A","telefono":"3298166333","dataNascita":"2012-01-18"},{"id":"p42","name":"Riccardo","surname":"Garofalo","team":"U16A","telefono":"3451155001","dataNascita":"2011-02-24"},{"id":"p43","name":"Lorenzo","surname":"Rametta","team":"U16A","telefono":"3487412912","dataNascita":"2011-07-06"},{"id":"p44","name":"Flavio","surname":"Tripodi","team":"U16A","telefono":"3200877425","dataNascita":"2012-07-19"},{"id":"p45","name":"Andrea","surname":"Lutri","team":"U16A","telefono":"3358415319","dataNascita":"2012-06-21"},{"id":"p46","name":"Fabrizio","surname":"Triolo","team":"U16A","telefono":"3337824618","dataNascita":"2012-07-22"},{"id":"p47","name":"Alfredo","surname":"Cilio","team":"U16A","telefono":"3388512193","dataNascita":"2012-10-05"},{"id":"p48","name":"Matteo","surname":"La Porta","team":"U16B","telefono":"3921568760","dataNascita":"2012-07-11"},{"id":"p49","name":"Leonardo","surname":"D'Anna","team":"U16B","telefono":"3206288787","dataNascita":"2012-02-01"},{"id":"p50","name":"Gabriele","surname":"Caia","team":"U16B","telefono":"3298887583","dataNascita":"2011-11-25"},{"id":"p51","name":"EMANUELE","surname":"LAMERA","team":"U16B","telefono":"3397048336","dataNascita":"2012-12-12"},{"id":"p52","name":"Francesco","surname":"Giunta","team":"U16B","telefono":"3400935658","dataNascita":"2012-08-31"},{"id":"p53","name":"Andrea","surname":"Romano","team":"U16B","telefono":"3383957911","dataNascita":"2011-07-07"},{"id":"p54","name":"Riccardo","surname":"Pirosa","team":"U16B","telefono":"3338028999","dataNascita":"2011-10-24"},{"id":"p55","name":"Federico","surname":"Agnello","team":"U16B","telefono":"3294451056","dataNascita":"2011-06-03"},{"id":"p56","name":"Christian","surname":"Satta","team":"U16B","telefono":"3491692886","dataNascita":"2012-11-23"},{"id":"p57","name":"Matteo","surname":"Amore","team":"U16B","telefono":"3474705727","dataNascita":"2011-09-24"},{"id":"p58","name":"Andrea","surname":"Grande","team":"U18","telefono":"3398436392","dataNascita":"2010-10-01"},{"id":"p59","name":"Andrea","surname":"Di Martino","team":"U18","telefono":"","dataNascita":""},{"id":"p60","name":"Ivan","surname":"Vila","team":"U18","telefono":"","dataNascita":""},{"id":"p61","name":"Ennio","surname":"Reale","team":"U18","telefono":"","dataNascita":""},{"id":"p62","name":"Lorenzo","surname":"Della Bina","team":"U18","telefono":"","dataNascita":""},{"id":"p63","name":"Francesco","surname":"Palestro","team":"U18","telefono":"","dataNascita":""},{"id":"p64","name":"Nicolo","surname":"Santandrea","team":"U18","telefono":"","dataNascita":""},{"id":"p65","name":"Salvo","surname":"Attivelli","team":"U18","telefono":"","dataNascita":""},{"id":"p66","name":"Antonino","surname":"Panicola","team":"U18","telefono":"","dataNascita":""},{"id":"p67","name":"Ivan","surname":"Vernuccio","team":"U18","telefono":"","dataNascita":""}];
+        const getPlayersPath = () => `players`; 
+        const getAttendancePath = () => `attendance`; 
 
         window.onload = async () => {
             initUI();
@@ -345,43 +397,62 @@
             } catch (error) {
                 console.error("Auth Error:", error);
                 document.getElementById('syncText').textContent = "Errore di connessione cloud";
-                document.getElementById('cloudSyncBanner').classList.replace('bg-yellow-500', 'bg-red-500');
+                document.getElementById('cloudSyncBanner').classList.replace('bg-blue-600', 'bg-red-500');
             }
         };
 
+        // --- TOAST NOTIFICATION SYSTEM PRO ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const isSuccess = type === 'success';
+            const icon = isSuccess ? '<i class="fa-solid fa-circle-check text-emerald-500 text-lg"></i>' : '<i class="fa-solid fa-circle-exclamation text-amber-500 text-lg"></i>';
+            const bgClass = 'bg-white text-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100';
+            
+            toast.className = `toast ${bgClass} px-4 py-3 rounded-2xl flex items-center gap-3 font-medium text-sm`;
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Remove after 3s
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
         function initCloudData() {
-            // Escuchar Jugadores
+            // Listen for Players
             onSnapshot(collection(db, getPlayersPath()), async (snapshot) => {
-                const cloudPlayerCount = snapshot.size;
-                
-                // Si faltan jugadores respecto al inicial, forzar subida inteligente
-                if (cloudPlayerCount < initialData.length) {
-                    const existingIds = [];
-                    snapshot.forEach(doc => existingIds.push(doc.id));
-                    const missingPlayers = initialData.filter(p => !existingIds.includes(p.id));
-                    
-                    for (const p of missingPlayers) {
-                         const pData = { ...p, photo: null, dataIscrizione: '2026-09-01' };
-                         await setDoc(doc(db, getPlayersPath(), p.id), pData);
-                    }
+                players = [];
+                let newPlayersCount = 0;
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    players.push(data);
+                    if(data.isNew || data.team === 'DA ASSEGNARE') newPlayersCount++;
+                });
+
+                // Update New Player Badge in Nav
+                const navBadge = document.getElementById('navBadgeNew');
+                if (newPlayersCount > 0) {
+                    navBadge.classList.remove('hidden');
+                } else {
+                    navBadge.classList.add('hidden');
                 }
 
-                players = [];
-                snapshot.forEach(doc => {
-                    players.push(doc.data());
-                });
-                
-                players.sort((a, b) => a.surname.localeCompare(b.surname)); // Orden alfabético global
-                
                 populateTeamSelectors();
                 renderViews();
                 hideSyncBanner();
-                
             }, (error) => {
                 console.error("Error listening to players: ", error);
             });
 
-            // Escuchar Asistencias
+            // Listen for Attendance
             onSnapshot(collection(db, getAttendancePath()), async (snapshot) => {
                  if (!snapshot.empty) {
                      attendance = {};
@@ -409,7 +480,7 @@
 
         function initUI() {
             const today = new Date();
-            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+            const options = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
             document.getElementById('currentDateDisplay').textContent = today.toLocaleDateString('it-IT', options);
 
             const isoDate = today.toISOString().split('T')[0];
@@ -421,7 +492,11 @@
         }
 
         function populateTeamSelectors() {
-            const teams = [...new Set(players.map(p => p.team))].sort();
+            // Include 'DA ASSEGNARE' at the top if it exists
+            let teams = [...new Set(players.map(p => p.team))].sort();
+            if (teams.includes('DA ASSEGNARE')) {
+                teams = ['DA ASSEGNARE', ...teams.filter(t => t !== 'DA ASSEGNARE')];
+            }
             
             const teamSelect = document.getElementById('teamSelector');
             const historyTeamSelect = document.getElementById('historyTeamSelector');
@@ -438,27 +513,22 @@
             if(teamOptions) teamOptions.innerHTML = '';
             
             teams.forEach(team => {
+                const isDaAssegnare = team === 'DA ASSEGNARE';
+                const label = isDaAssegnare ? `⚠️ ${team}` : team;
+
                 const opt = document.createElement('option');
-                opt.value = team;
-                opt.textContent = team;
-                teamSelect.appendChild(opt);
+                opt.value = team; opt.textContent = label; teamSelect.appendChild(opt);
                 
                 const optHist = document.createElement('option');
-                optHist.value = team;
-                optHist.textContent = team;
-                historyTeamSelect.appendChild(optHist);
+                optHist.value = team; optHist.textContent = label; historyTeamSelect.appendChild(optHist);
 
                 if(rosterTeamSelect) {
                     const optRoster = document.createElement('option');
-                    optRoster.value = team;
-                    optRoster.textContent = team;
-                    rosterTeamSelect.appendChild(optRoster);
+                    optRoster.value = team; optRoster.textContent = label; rosterTeamSelect.appendChild(optRoster);
                 }
 
-                if(teamOptions) {
-                    const dlOpt = document.createElement('option');
-                    dlOpt.value = team;
-                    teamOptions.appendChild(dlOpt);
+                if(teamOptions && !isDaAssegnare) {
+                    const dlOpt = document.createElement('option'); dlOpt.value = team; teamOptions.appendChild(dlOpt);
                 }
             });
 
@@ -483,7 +553,7 @@
         async function markAttendance(date, playerId, status) {
             if (!attendance[date]) attendance[date] = {};
             if (attendance[date][playerId] === status) {
-                delete attendance[date][playerId];
+                delete attendance[date][playerId]; // Toggle off
             } else {
                 attendance[date][playerId] = status;
             }
@@ -493,21 +563,51 @@
                 await setDoc(doc(db, getAttendancePath(), date), { records: attendance[date] });
             } catch(e) {
                 console.error("Cloud Error:", e);
+                showToast("Errore di rete", "error");
             }
         }
+
+        // --- NEW UX FEATURE: MARK ALL PRESENT ---
+        window.markAllPresent = async function() {
+            const team = document.getElementById('teamSelector').value;
+            const date = document.getElementById('attendanceDate').value;
+            if (!team || !date) return;
+
+            const teamPlayers = players.filter(p => p.team === team);
+            if (!attendance[date]) attendance[date] = {};
+
+            // Only mark those not explicitly marked absent
+            teamPlayers.forEach(p => {
+                if (attendance[date][p.id] !== 'absent') {
+                    attendance[date][p.id] = 'present';
+                }
+            });
+
+            renderAppelloList();
+            showToast("Tutti segnati presenti!");
+
+            try {
+                await setDoc(doc(db, getAttendancePath(), date), { records: attendance[date] });
+            } catch(e) {
+                console.error("Cloud Error:", e);
+            }
+        };
 
         async function savePlayerToCloud(playerObj) {
             try {
                 await setDoc(doc(db, getPlayersPath(), playerObj.id), playerObj);
+                showToast("Giocatore salvato con successo");
                 closePlayerModal();
             } catch(e) {
                 console.error("Save Error:", e);
+                showToast("Errore durante il salvataggio", "error");
             }
         }
 
         async function deletePlayerFromCloud(playerId) {
             try {
                  await deleteDoc(doc(db, getPlayersPath(), playerId));
+                 showToast("Giocatore eliminato");
                  closePlayerModal();
             } catch(e) {
                 console.error("Delete Error:", e);
@@ -515,21 +615,27 @@
         }
 
         function getInitials(name, surname) {
-            return (name.charAt(0) + surname.charAt(0)).toUpperCase();
+            return (name.charAt(0) + (surname ? surname.charAt(0) : '')).toUpperCase();
         }
 
         function renderAppelloList() {
             const team = document.getElementById('teamSelector').value;
             const date = document.getElementById('attendanceDate').value;
             const container = document.getElementById('playersList');
+            const headerStats = document.getElementById('appelloHeaderStats');
+            const statsText = document.getElementById('attendanceStats');
             
             container.innerHTML = '';
 
             if (!team || !date) {
+                headerStats.style.display = 'none';
                 container.innerHTML = `
-                    <div class="text-center text-gray-500 mt-10 py-10">
-                        <i class="fa-solid fa-users text-4xl mb-3 text-gray-300"></i>
-                        <p>Seleziona una squadra per iniziare l'appello.</p>
+                    <div class="text-center text-slate-400 mt-12 py-10 bg-white rounded-3xl border border-dashed border-slate-200">
+                        <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <p class="font-medium text-slate-600">Seleziona una squadra</p>
+                        <p class="text-xs mt-1">per iniziare l'appello di oggi</p>
                     </div>`;
                 return;
             }
@@ -537,14 +643,22 @@
             const teamPlayers = players.filter(p => p.team === team);
             if (!attendance[date]) attendance[date] = {};
 
+            let presCount = 0;
+            let absCount = 0;
+
+            // Sort alphabetically
+            teamPlayers.sort((a, b) => a.surname.localeCompare(b.surname));
+
             teamPlayers.forEach(player => {
                 const status = attendance[date][player.id] || 'none';
+                if (status === 'present') presCount++;
+                if (status === 'absent') absCount++;
                 
                 const card = document.createElement('div');
-                card.className = 'bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3';
+                card.className = 'bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 card-pro';
                 
                 const avatarDiv = document.createElement('div');
-                avatarDiv.className = 'w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0 border-2 border-transparent active:border-blue-400 cursor-pointer';
+                avatarDiv.className = 'w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0 cursor-pointer shadow-inner';
                 avatarDiv.onclick = () => window.openPhotoModal(player.id);
                 
                 if (player.photo) {
@@ -555,19 +669,19 @@
 
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'flex-1';
-                infoDiv.innerHTML = `<p class="font-semibold text-gray-800 leading-tight">${player.surname} ${player.name}</p>`;
+                infoDiv.innerHTML = `<p class="font-bold text-slate-700 leading-tight">${player.surname} ${player.name}</p>`;
 
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'flex gap-2';
 
                 const btnPresent = document.createElement('button');
-                btnPresent.className = `w-10 h-10 rounded-full border flex items-center justify-center status-btn ${status === 'present' ? 'status-present shadow-md' : 'status-none hover:bg-gray-200'}`;
-                btnPresent.innerHTML = '<i class="fa-solid fa-check"></i>';
+                btnPresent.className = `w-12 h-12 rounded-xl border flex items-center justify-center status-btn ${status === 'present' ? 'status-present' : 'status-none hover:bg-slate-200'}`;
+                btnPresent.innerHTML = '<i class="fa-solid fa-check text-lg"></i>';
                 btnPresent.onclick = () => markAttendance(date, player.id, 'present');
 
                 const btnAbsent = document.createElement('button');
-                btnAbsent.className = `w-10 h-10 rounded-full border flex items-center justify-center status-btn ${status === 'absent' ? 'status-absent shadow-md' : 'status-none hover:bg-gray-200'}`;
-                btnAbsent.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                btnAbsent.className = `w-12 h-12 rounded-xl border flex items-center justify-center status-btn ${status === 'absent' ? 'status-absent' : 'status-none hover:bg-slate-200'}`;
+                btnAbsent.innerHTML = '<i class="fa-solid fa-xmark text-lg"></i>';
                 btnAbsent.onclick = () => markAttendance(date, player.id, 'absent');
 
                 actionsDiv.appendChild(btnPresent);
@@ -577,6 +691,14 @@
                 card.appendChild(actionsDiv);
                 container.appendChild(card);
             });
+
+            if (teamPlayers.length > 0) {
+                headerStats.style.display = 'flex';
+                statsText.innerHTML = `<span class="text-emerald-600 font-bold">${presCount} Presenti</span> <span class="mx-1">•</span> <span class="text-red-500 font-bold">${absCount} Assenti</span>`;
+            } else {
+                headerStats.style.display = 'none';
+                container.innerHTML = `<div class="text-center py-10 text-slate-500 font-medium bg-white rounded-3xl">Nessun giocatore in questa squadra</div>`;
+            }
         }
 
         function renderStorico() {
@@ -592,6 +714,8 @@
                 ? players 
                 : players.filter(p => p.team === teamFilter);
 
+            targetPlayers.sort((a, b) => a.surname.localeCompare(b.surname));
+
             targetPlayers.forEach(player => {
                 let presences = 0;
                 let absences = 0;
@@ -605,108 +729,40 @@
                 });
 
                 const tr = document.createElement('tr');
-                tr.className = 'bg-white border-b hover:bg-gray-50';
+                tr.className = 'bg-white hover:bg-slate-50 transition-colors';
                 tr.innerHTML = `
-                    <th scope="row" class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                    <th scope="row" class="px-5 py-4 font-semibold text-slate-800 whitespace-nowrap">
                         ${player.surname} ${player.name}
-                        ${teamFilter === 'ALL' ? `<br><span class="text-xs text-gray-400 font-normal">${player.team}</span>` : ''}
+                        ${teamFilter === 'ALL' ? `<br><span class="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full mt-1 inline-block">${player.team}</span>` : ''}
                     </th>
-                    <td class="px-4 py-3 text-center text-green-600 font-bold bg-green-50/30">${presences}</td>
-                    <td class="px-4 py-3 text-center text-red-600 font-bold bg-red-50/30">${absences}</td>
+                    <td class="px-5 py-4 text-center text-emerald-600 font-bold bg-emerald-50/50">${presences}</td>
+                    <td class="px-5 py-4 text-center text-red-500 font-bold bg-red-50/50">${absences}</td>
                 `;
                 tbody.appendChild(tr);
             });
             
             if (targetPlayers.length === 0) {
-                 tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-gray-500">Nessun giocatore trovato</td></tr>`;
+                 tbody.innerHTML = `<tr><td colspan="3" class="px-5 py-10 text-center text-slate-400 font-medium">Nessun dato trovato</td></tr>`;
             }
         }
 
-        function renderGiocatori() {
-            const teamFilter = document.getElementById('rosterTeamSelector').value;
-            const searchQuery = (document.getElementById('playerSearchInput').value || '').toLowerCase();
-            const container = document.getElementById('rosterList');
-            container.innerHTML = '';
-
-            let targetPlayers = teamFilter === 'ALL' 
-                ? players 
-                : players.filter(p => p.team === teamFilter);
-
-            if (searchQuery) {
-                targetPlayers = targetPlayers.filter(p => 
-                    p.name.toLowerCase().includes(searchQuery) || 
-                    p.surname.toLowerCase().includes(searchQuery)
-                );
-            }
-
-            targetPlayers.forEach(player => {
-                const card = document.createElement('div');
-                card.className = 'bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors';
-                card.onclick = () => window.openPlayerModal(player.id);
-                
-                const avatarDiv = document.createElement('div');
-                avatarDiv.className = 'w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0';
-                if (player.photo) {
-                    avatarDiv.innerHTML = `<img src="${player.photo}" class="avatar-img" alt="${player.name}">`;
-                } else {
-                    avatarDiv.innerHTML = getInitials(player.name, player.surname);
-                }
-
-                const infoDiv = document.createElement('div');
-                infoDiv.className = 'flex-1';
-                
-                let entryDateStr = '';
-                if(player.dataIscrizione) {
-                    const d = new Date(player.dataIscrizione);
-                    if(!isNaN(d)) entryDateStr = ` • Iscr: ${d.toLocaleDateString('it-IT')}`;
-                }
-
-                // Etiqueta "NUOVO" si viene de Google Sheets
-                const isNewBadge = player.isNew ? `<span class="bg-yellow-400 text-yellow-900 text-[9px] font-bold px-2 py-0.5 rounded-full ml-2 animate-pulse shadow-sm border border-yellow-500">NUOVO</span>` : '';
-
-                infoDiv.innerHTML = `
-                    <p class="font-semibold text-gray-800 leading-tight flex items-center">${player.surname} ${player.name} ${isNewBadge}</p>
-                    <p class="text-xs text-gray-500 mt-1">${player.team}${entryDateStr}</p>
-                `;
-
-                const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'flex gap-2';
-
-                if (player.telefono) {
-                    let waPhone = player.telefono.replace(/\s+/g, '');
-                    if (!waPhone.startsWith('+')) waPhone = '+39' + waPhone;
-
-                    actionsDiv.innerHTML = `
-                        <a href="tel:${player.telefono}" onclick="event.stopPropagation()" class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 shadow-sm"><i class="fa-solid fa-phone"></i></a>
-                        <a href="https://wa.me/${waPhone}" target="_blank" onclick="event.stopPropagation()" class="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 shadow-sm"><i class="fa-brands fa-whatsapp text-xl"></i></a>
-                    `;
-                } else {
-                    actionsDiv.innerHTML = `<div class="w-10 h-10 flex items-center justify-center text-gray-300"><i class="fa-solid fa-chevron-right"></i></div>`;
-                }
-
-                card.appendChild(avatarDiv);
-                card.appendChild(infoDiv);
-                card.appendChild(actionsDiv);
-                container.appendChild(card);
-            });
-
-            if (targetPlayers.length === 0) {
-                 container.innerHTML = `<div class="text-center py-8 text-gray-500">Nessun giocatore trovato</div>`;
-            }
-        }
-
-        // --- NUEVA FUNCIÓN PARA LA VISTA DE EQUIPOS ---
+        // --- DASHBOARD SQUADRE ---
         function renderSquadre() {
             const container = document.getElementById('squadreList');
+            document.getElementById('totalPlayersBadge').textContent = `${players.length} Totali`;
             container.innerHTML = '';
             
-            const teams = [...new Set(players.map(p => p.team))].sort();
+            let teams = [...new Set(players.map(p => p.team))].sort();
+            if (teams.includes('DA ASSEGNARE')) {
+                teams = ['DA ASSEGNARE', ...teams.filter(t => t !== 'DA ASSEGNARE')];
+            }
 
             teams.forEach(team => {
                 const teamPlayers = players.filter(p => p.team === team);
+                const isDaAssegnare = team === 'DA ASSEGNARE';
                 
                 const card = document.createElement('div');
-                card.className = 'bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer';
+                card.className = `bg-white p-5 rounded-3xl shadow-sm border ${isDaAssegnare ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'} hover:shadow-md transition-all cursor-pointer`;
                 card.onclick = () => {
                     document.getElementById('rosterTeamSelector').value = team;
                     switchTab('giocatori');
@@ -714,15 +770,15 @@
                 
                 // Header (Name + Count)
                 const header = document.createElement('div');
-                header.className = 'flex justify-between items-center mb-4';
+                header.className = 'flex justify-between items-center mb-5';
                 header.innerHTML = `
-                    <h3 class="text-lg font-bold text-gray-800">${team}</h3>
-                    <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full">${teamPlayers.length} Giocatori</span>
+                    <h3 class="text-lg font-bold ${isDaAssegnare ? 'text-amber-600' : 'text-slate-800'}">${isDaAssegnare ? '⚠️ DA ASSEGNARE' : team}</h3>
+                    <span class="${isDaAssegnare ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'} text-xs font-bold px-3 py-1 rounded-full">${teamPlayers.length}</span>
                 `;
                 
-                // Mini Avatars grid (show up to 7 players)
+                // Mini Avatars grid 
                 const avatarsContainer = document.createElement('div');
-                avatarsContainer.className = 'avatar-group';
+                avatarsContainer.className = 'avatar-group pl-3';
                 
                 const displayPlayers = teamPlayers.slice(0, 7);
                 displayPlayers.forEach(p => {
@@ -738,7 +794,7 @@
 
                 if (teamPlayers.length > 7) {
                     const moreAvi = document.createElement('div');
-                    moreAvi.className = 'avatar-mini bg-gray-100 text-gray-500 border-gray-200';
+                    moreAvi.className = 'avatar-mini bg-slate-200 text-slate-600 border-white';
                     moreAvi.textContent = `+${teamPlayers.length - 7}`;
                     avatarsContainer.appendChild(moreAvi);
                 }
@@ -749,27 +805,129 @@
             });
         }
 
+        function renderGiocatori() {
+            const teamFilter = document.getElementById('rosterTeamSelector').value;
+            const searchQuery = (document.getElementById('playerSearchInput').value || '').toLowerCase();
+            const container = document.getElementById('rosterList');
+            container.innerHTML = '';
+
+            let targetPlayers = teamFilter === 'ALL' 
+                ? players 
+                : players.filter(p => p.team === teamFilter);
+
+            if (searchQuery) {
+                targetPlayers = targetPlayers.filter(p => 
+                    p.name.toLowerCase().includes(searchQuery) || 
+                    p.surname.toLowerCase().includes(searchQuery) ||
+                    p.team.toLowerCase().includes(searchQuery)
+                );
+            }
+
+            // Put "DA ASSEGNARE" / "NUOVO" at top, then alphabetical
+            targetPlayers.sort((a, b) => {
+                if (a.isNew || a.team === 'DA ASSEGNARE') return -1;
+                if (b.isNew || b.team === 'DA ASSEGNARE') return 1;
+                return a.surname.localeCompare(b.surname);
+            });
+
+            targetPlayers.forEach(player => {
+                const card = document.createElement('div');
+                const isAttention = player.isNew || player.team === 'DA ASSEGNARE';
+                card.className = `bg-white p-3 rounded-2xl shadow-sm border ${isAttention ? 'border-amber-300 bg-amber-50/20' : 'border-slate-100'} flex items-center gap-3 cursor-pointer card-pro`;
+                card.onclick = () => window.openPlayerModal(player.id);
+                
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = 'w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0 shadow-inner';
+                if (player.photo) {
+                    avatarDiv.innerHTML = `<img src="${player.photo}" class="avatar-img" alt="${player.name}">`;
+                } else {
+                    avatarDiv.innerHTML = getInitials(player.name, player.surname);
+                }
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'flex-1';
+                
+                // Badge NUOVO animato
+                const newBadge = isAttention ? `<span class="badge-new bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full ml-2 shadow-sm uppercase tracking-wider">Nuovo</span>` : '';
+
+                infoDiv.innerHTML = `
+                    <p class="font-bold text-slate-800 leading-tight flex items-center">${player.surname} ${player.name} ${newBadge}</p>
+                    <p class="text-[11px] font-semibold ${isAttention ? 'text-amber-600' : 'text-slate-400'} mt-1 uppercase tracking-wider">${player.team}</p>
+                `;
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex gap-2';
+
+                if (player.telefono) {
+                    let waPhone = player.telefono.replace(/\s+/g, '');
+                    if (!waPhone.startsWith('+')) waPhone = '+39' + waPhone;
+
+                    actionsDiv.innerHTML = `
+                        <a href="tel:${player.telefono}" onclick="event.stopPropagation()" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors"><i class="fa-solid fa-phone"></i></a>
+                        <a href="https://wa.me/${waPhone}" target="_blank" onclick="event.stopPropagation()" class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition-colors"><i class="fa-brands fa-whatsapp text-lg"></i></a>
+                    `;
+                } else {
+                    actionsDiv.innerHTML = `<div class="w-10 h-10 flex items-center justify-center text-slate-300"><i class="fa-solid fa-chevron-right"></i></div>`;
+                }
+
+                card.appendChild(avatarDiv);
+                card.appendChild(infoDiv);
+                card.appendChild(actionsDiv);
+                container.appendChild(card);
+            });
+
+            if (targetPlayers.length === 0) {
+                 container.innerHTML = `
+                    <div class="text-center py-12 text-slate-400 bg-white rounded-3xl border border-dashed border-slate-200 mt-4">
+                        <i class="fa-solid fa-ghost text-4xl mb-3 text-slate-300"></i>
+                        <p class="font-medium">Nessun giocatore trovato</p>
+                    </div>`;
+            }
+        }
+
         window.switchTab = function(tab) {
             const views = ['viewAppello', 'viewStorico', 'viewSquadre', 'viewGiocatori'];
             const tabs = ['tabAppello', 'tabStorico', 'tabSquadre', 'tabGiocatori'];
 
             views.forEach(v => document.getElementById(v).classList.add('hidden'));
             
-            const inactiveClass = 'flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none';
-            const activeClass = 'flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none';
-            
-            tabs.forEach(t => document.getElementById(t).className = inactiveClass);
+            tabs.forEach(t => {
+                document.getElementById(t).classList.remove('nav-active');
+                document.getElementById(t).classList.add('nav-inactive');
+            });
 
             document.getElementById('view' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
-            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).className = activeClass;
+            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('nav-inactive');
+            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('nav-active');
 
             if (tab === 'storico') renderStorico();
             else if (tab === 'giocatori') renderGiocatori();
             else if (tab === 'squadre') renderSquadre();
         };
 
+        // --- ANIMATED MODALS ---
+        function openModalAnim(modalId, contentId) {
+            const modal = document.getElementById(modalId);
+            const content = document.getElementById(contentId);
+            modal.classList.remove('hidden');
+            // Small delay to allow display:block to apply before animation
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModalAnim(modalId, contentId) {
+            const modal = document.getElementById(modalId);
+            const content = document.getElementById(contentId);
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
         window.openPlayerModal = function(playerId = null) {
-            const modal = document.getElementById('playerModal');
             const title = document.getElementById('playerModalTitle');
             const form = document.getElementById('playerForm');
             const deleteBtn = document.getElementById('deletePlayerBtn');
@@ -782,6 +940,8 @@
                 
                 title.textContent = 'Modifica Giocatore';
                 document.getElementById('editPlayerId').value = player.id;
+                document.getElementById('editPlayerIsNew').value = player.isNew ? "true" : "";
+                
                 document.getElementById('playerName').value = player.name;
                 document.getElementById('playerSurname').value = player.surname;
                 document.getElementById('playerTeam').value = player.team;
@@ -791,69 +951,59 @@
                 
                 deleteBtn.classList.remove('hidden');
             } else {
-                title.textContent = 'Aggiungi Giocatore';
+                title.textContent = 'Nuovo Giocatore';
                 document.getElementById('editPlayerId').value = '';
+                document.getElementById('editPlayerIsNew').value = '';
                 document.getElementById('playerEntry').value = new Date().toISOString().split('T')[0]; 
                 deleteBtn.classList.add('hidden');
             }
 
-            modal.classList.remove('hidden');
+            openModalAnim('playerModal', 'playerModalContent');
         };
 
         window.closePlayerModal = function() {
-            document.getElementById('playerModal').classList.add('hidden');
+            closeModalAnim('playerModal', 'playerModalContent');
         };
 
         window.savePlayer = function(e) {
             e.preventDefault();
             
             const id = document.getElementById('editPlayerId').value;
+            const wasNew = document.getElementById('editPlayerIsNew').value === "true";
+            
             const name = document.getElementById('playerName').value.trim();
             const surname = document.getElementById('playerSurname').value.trim();
-            const team = document.getElementById('playerTeam').value.trim().toUpperCase();
+            const teamInput = document.getElementById('playerTeam').value.trim().toUpperCase();
             const phone = document.getElementById('playerPhone').value.trim();
             const birth = document.getElementById('playerBirth').value;
             const entry = document.getElementById('playerEntry').value;
 
-            if(!name || !surname || !team) return;
+            if(!name || !surname || !teamInput) return;
 
             let playerObj;
             if (id) {
                 const existing = players.find(p => p.id === id);
-                playerObj = {
-                    ...existing,
-                    name: name,
-                    surname: surname,
-                    team: team,
-                    telefono: phone,
-                    dataNascita: birth,
-                    dataIscrizione: entry
-                };
-                // Si el jugador era nuevo y lo editamos/guardamos, le quitamos la etiqueta de nuevo
-                if (playerObj.isNew) {
-                    delete playerObj.isNew;
+                playerObj = { ...existing, name, surname, team: teamInput, telefono: phone, dataNascita: birth, dataIscrizione: entry };
+                
+                // Si el jugador era "nuevo" o "da assegnare" y lo pusimos en un equipo real, le quitamos la etiqueta
+                if (wasNew && teamInput !== 'DA ASSEGNARE') {
+                    playerObj.isNew = false;
                 }
             } else {
                 playerObj = {
                     id: 'p' + Date.now(),
-            // Start Cloud Save (will trigger UI update via snapshot)
+                    name, surname, team: teamInput, telefono: phone, dataNascita: birth, dataIscrizione: entry, photo: null
+                };
+            }
             savePlayerToCloud(playerObj);
-        };
-
-        window.openConfirmDelete = function() {
-            document.getElementById('confirmModal').classList.remove('hidden');
-        };
-
-        window.closeConfirmDelete = function() {
-            document.getElementById('confirmModal').classList.add('hidden');
         };
 
         window.deletePlayer = function() {
             const id = document.getElementById('editPlayerId').value;
             if(!id) return;
-            
-            closeConfirmDelete();
-            deletePlayerFromCloud(id);
+            if(confirm("Sei sicuro di voler eliminare questo giocatore?")) {
+                deletePlayerFromCloud(id);
+            }
         };
 
         window.openPhotoModal = function(playerId) {
@@ -880,12 +1030,12 @@
                 removeBtn.classList.add('hidden');
             }
 
-            document.getElementById('photoModal').classList.remove('hidden');
+            openModalAnim('photoModal', 'photoModalContent');
         };
 
         window.closePhotoModal = function() {
-            document.getElementById('photoModal').classList.add('hidden');
-            currentEditingPlayerId = null;
+            closeModalAnim('photoModal', 'photoModalContent');
+            setTimeout(() => currentEditingPlayerId = null, 300);
         };
 
         window.removePhoto = function() {
@@ -902,7 +1052,9 @@
             const file = event.target.files[0];
             if (!file || !currentEditingPlayerId) return;
 
-            document.getElementById('modalPreviewIcon').className = "fa-solid fa-spinner fa-spin text-4xl text-blue-500";
+            document.getElementById('modalPreviewIcon').className = "fa-solid fa-spinner fa-spin text-5xl text-blue-500";
+            document.getElementById('modalPreviewIcon').classList.remove('hidden');
+            document.getElementById('modalPreviewImg').classList.add('hidden');
             
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -949,7 +1101,8 @@
             const tbody = document.getElementById('historyTableBody');
             const rows = tbody.querySelectorAll('tr');
             
-            if (rows.length === 0 || (rows.length === 1 && rows[0].innerText.includes('Nessun giocatore'))) {
+            if (rows.length === 0 || (rows.length === 1 && rows[0].innerText.includes('Nessun dato'))) {
+                showToast("Nessun dato da esportare", "error");
                 return;
             }
 
@@ -960,7 +1113,7 @@
                 if(cols.length === 3) {
                     let nameCell = cols[0].innerHTML.replace(/<br>/g, '|').replace(/<[^>]+>/g, '').trim();
                     let name = nameCell.split('|')[0].trim();
-                    let playerTeam = nameCell.split('|')[1] ? nameCell.split('|')[1].trim() : team;
+                    let playerTeam = nameCell.split('|')[1] ? nameCell.split('|')[1].replace(/<[^>]+>/g, '').trim() : team;
                     
                     let presenze = cols[1].innerText.trim();
                     let assenze = cols[2].innerText.trim();
@@ -977,14 +1130,9 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            showToast("Download avviato!");
         };
     </script>
 </body>
 </html>
-```
-
-### Sobre la integración con el Excel/Formulario:
-Si te interesa hacerlo, la forma más profesional y gratuita es usar **Google Apps Script**. Básicamente, escribiré un código corto que pegarás dentro de tu Excel de Google. Cada vez que entre una respuesta nueva al formulario, ese código "hablará" con Firebase y añadirá al jugador mágicamente.
-
-Dime si quieres que te prepare las instrucciones y el código para hacerlo, ¡es bastante rápido!
 ```
