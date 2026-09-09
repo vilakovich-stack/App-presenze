@@ -19,20 +19,26 @@
         .status-absent { background-color: #ef4444; color: white; border-color: #ef4444; }
         .status-none { background-color: #e5e7eb; color: #6b7280; border-color: #d1d5db; }
         
-        /* Hide scrollbar for clean mobile look */
+        /* Hide scrollbar */
         ::-webkit-scrollbar { display: none; }
 
         /* Cloud Sync Banner */
         #cloudSyncBanner { transition: top 0.3s ease-in-out; }
         .banner-visible { top: 0; }
         .banner-hidden { top: -50px; }
+        
+        /* Mini Avatars for Teams */
+        .avatar-group { display: flex; align-items: center; }
+        .avatar-mini { width: 32px; height: 32px; border-radius: 50%; border: 2px solid white; margin-left: -10px; background-color: #dbeafe; color: #2563eb; display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold; overflow: hidden; }
+        .avatar-mini:first-child { margin-left: 0; }
+        .avatar-mini img { width: 100%; height: 100%; object-fit: cover; }
     </style>
 </head>
 <body class="text-gray-800 flex flex-col h-screen overflow-hidden relative">
 
     <!-- Cloud Sync Status Banner -->
     <div id="cloudSyncBanner" class="fixed left-0 w-full bg-yellow-500 text-white text-xs font-bold text-center py-1 z-50 banner-visible shadow-md flex justify-center items-center gap-2">
-        <i class="fa-solid fa-cloud-arrow-up animate-bounce"></i> <span id="syncText">Sincronizzazione in corso... attendere.</span>
+        <i class="fa-solid fa-cloud-arrow-up animate-bounce"></i> <span id="syncText">Sincronizzazione in corso...</span>
     </div>
 
     <!-- Header -->
@@ -66,7 +72,7 @@
             <div id="playersList" class="space-y-3 mt-4">
                 <div class="text-center text-gray-500 mt-10 py-10">
                     <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-3 text-gray-300"></i>
-                    <p>Caricamento giocatori...</p>
+                    <p>Connessione al Cloud in corso...</p>
                 </div>
             </div>
         </div>
@@ -160,22 +166,36 @@
                 <!-- Populated by JS -->
             </div>
         </div>
+
+        <!-- View 4: Squadre (Visual Dashboard) -->
+        <div id="viewSquadre" class="p-4 space-y-4 hidden">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-bold text-gray-800">Panoramica Squadre</h2>
+            </div>
+            <div id="squadreList" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
+                <!-- Populated by JS -->
+            </div>
+        </div>
     </main>
 
-    <!-- Bottom Navigation -->
+    <!-- Bottom Navigation (Now with 4 tabs) -->
     <nav class="fixed bottom-0 w-full bg-white border-t border-gray-200 z-10 pb-safe">
         <div class="max-w-3xl mx-auto flex">
             <button onclick="switchTab('appello')" id="tabAppello" class="flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none">
                 <i class="fa-solid fa-list-check text-xl"></i>
-                <span class="text-xs">Appello</span>
+                <span class="text-[10px] sm:text-xs">Appello</span>
             </button>
             <button onclick="switchTab('storico')" id="tabStorico" class="flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none">
                 <i class="fa-solid fa-chart-pie text-xl"></i>
-                <span class="text-xs">Storico</span>
+                <span class="text-[10px] sm:text-xs">Storico</span>
+            </button>
+            <button onclick="switchTab('squadre')" id="tabSquadre" class="flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none">
+                <i class="fa-solid fa-layer-group text-xl"></i>
+                <span class="text-[10px] sm:text-xs">Squadre</span>
             </button>
             <button onclick="switchTab('giocatori')" id="tabGiocatori" class="flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none">
                 <i class="fa-solid fa-users text-xl"></i>
-                <span class="text-xs">Giocatori</span>
+                <span class="text-[10px] sm:text-xs">Giocatori</span>
             </button>
         </div>
     </nav>
@@ -262,20 +282,33 @@
                 </div>
 
                 <div class="pt-4 flex gap-3">
-                    <button type="button" id="deletePlayerBtn" onclick="deletePlayer()" class="hidden flex-1 bg-red-100 text-red-600 font-semibold py-3 rounded-xl hover:bg-red-200 transition-colors">Elimina</button>
+                    <button type="button" id="deletePlayerBtn" onclick="openConfirmDelete()" class="hidden flex-1 bg-red-100 text-red-600 font-semibold py-3 rounded-xl hover:bg-red-200 transition-colors">Elimina</button>
                     <button type="submit" class="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors">Salva nel Cloud</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- Custom Confirm Delete Modal -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/70 z-[60] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl transform transition-all">
+            <div class="w-16 h-16 rounded-full bg-red-100 text-red-500 flex items-center justify-center mx-auto mb-4 text-3xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">Conferma Eliminazione</h3>
+            <p class="text-sm text-gray-500 mb-6">Sei sicuro di voler eliminare questo giocatore? L'azione è irreversibile.</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmDelete()" class="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 rounded-xl hover:bg-gray-200 transition-colors">Annulla</button>
+                <button id="confirmDeleteBtn" onclick="deletePlayer()" class="flex-1 bg-red-600 text-white font-semibold py-3 rounded-xl hover:bg-red-700 transition-colors">Elimina</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
-        // Importaciones correctas de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // TUS CREDENCIALES EXACTAS DE FIREBASE
         const firebaseConfig = {
           apiKey: "AIzaSyAEzLuN2TT77foODRGwAo3UY16VolP9nzY",
           authDomain: "gestione-presenze-b52c7.firebaseapp.com",
@@ -284,94 +317,29 @@
           messagingSenderId: "8099106330",
           appId: "1:8099106330:web:a69dfd06a4662bd8474ba3"
         };
-
-        // Inicializar Firebase
+        
+        // Init Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Variables de estado
+        // State
         let players = [];
         let attendance = {}; 
         let currentEditingPlayerId = null;
+        
+        // Rutas fijas a tu BD Cloud (no más modo test sandbox)
+        const getPlayersPath = () => `players`; 
+        const getAttendancePath = () => `attendance`;
 
-        // DATOS DE TODOS TUS JUGADORES (67 Jugadores en total)
-        const initialData = [
-            { id: 'p1', name: 'Sveva', surname: 'Caruso', team: 'BIMBA', telefono: '3899980000', dataNascita: '2018-05-23' },
-            { id: 'p2', name: 'Tommaso', surname: 'Spada', team: 'BIMBO', telefono: '3715346633', dataNascita: '2020-08-01' },
-            { id: 'p3', name: 'Ginevra', surname: 'Barranco', team: 'U14 FEMMINILE', telefono: '3200108107', dataNascita: '2016-09-29' },
-            { id: 'p4', name: 'Viola', surname: 'Bottaro', team: 'U14 FEMMINILE', telefono: '3461900038', dataNascita: '2016-04-02' },
-            { id: 'p5', name: 'Bianca', surname: 'Bottaro', team: 'U14 FEMMINILE', telefono: '3461900038', dataNascita: '2016-04-02' },
-            { id: 'p6', name: 'Annachiara', surname: 'Lorefice', team: 'U14 FEMMINILE', telefono: '3332106049', dataNascita: '2015-08-28' },
-            { id: 'p7', name: 'Ludovica Lucia', surname: 'Lorefice', team: 'U14 FEMMINILE', telefono: '3332106049', dataNascita: '2015-12-10' },
-            { id: 'p8', name: 'Agnese', surname: 'Lutri', team: 'U14 FEMMINILE', telefono: '3358415319', dataNascita: '2014-01-01' },
-            { id: 'p9', name: 'Yassmine', surname: 'Ben hadda', team: 'U14 FEMMINILE', telefono: '3296943861', dataNascita: '2013-04-07' },
-            { id: 'p10', name: 'Rachele', surname: 'Santoro', team: 'U14 FEMMINILE', telefono: '3519957519', dataNascita: '2013-08-13' },
-            { id: 'p11', name: 'Vittoria', surname: 'Carpanzano', team: 'U14 FEMMINILE', telefono: '3273386743', dataNascita: '2014-03-07' },
-            { id: 'p12', name: 'Samuele', surname: 'Fazzina', team: 'U14A', telefono: '3383066302', dataNascita: '2013-12-23' },
-            { id: 'p13', name: 'Alessio', surname: 'Valente', team: 'U14A', telefono: '3298275557', dataNascita: '2014-09-09' },
-            { id: 'p14', name: 'Vincenzo', surname: 'Sampieri', team: 'U14A', telefono: '3803871388', dataNascita: '2013-06-25' },
-            { id: 'p15', name: 'Francesco', surname: 'Bisicchia', team: 'U14A', telefono: '3289542081', dataNascita: '2013-04-06' },
-            { id: 'p16', name: 'Federico', surname: 'Scatà', team: 'U14A', telefono: '3288688962', dataNascita: '2013-03-19' },
-            { id: 'p17', name: 'Nicolò', surname: 'Licitra', team: 'U14A', telefono: '3336841533', dataNascita: '2013-11-28' },
-            { id: 'p18', name: 'Riccardo', surname: 'Bottaro', team: 'U14A', telefono: '3461900038', dataNascita: '2013-03-13' },
-            { id: 'p19', name: 'Elia', surname: 'Ramondetta', team: 'U14A', telefono: '3513359100', dataNascita: '2013-10-23' },
-            { id: 'p20', name: 'Alessandro', surname: 'Burgio', team: 'U14A', telefono: '3456900992', dataNascita: '2013-11-15' },
-            { id: 'p21', name: 'Mariano', surname: 'Garofalo', team: 'U14A', telefono: '3451155001', dataNascita: '2014-02-14' },
-            { id: 'p22', name: 'Giovanni', surname: 'Russo', team: 'U14B', telefono: '3288174699', dataNascita: '2015-06-25' },
-            { id: 'p23', name: 'Mario', surname: 'Russo', team: 'U14B', telefono: '3288174699', dataNascita: '2015-06-25' },
-            { id: 'p24', name: 'Davide', surname: 'Tine\'', team: 'U14B', telefono: '3895377563', dataNascita: '2016-02-17' },
-            { id: 'p25', name: 'Daniele', surname: 'Lamera', team: 'U14B', telefono: '3397048336', dataNascita: '2016-09-28' },
-            { id: 'p26', name: 'Andrea', surname: 'Monteneri', team: 'U14B', telefono: '3471387017', dataNascita: '2016-02-10' },
-            { id: 'p27', name: 'Giordano', surname: 'Torneo', team: 'U14B', telefono: '3316348298', dataNascita: '2015-04-02' },
-            { id: 'p28', name: 'Alessandro', surname: 'Giunta', team: 'U14B', telefono: '3400935658', dataNascita: '2016-04-11' },
-            { id: 'p29', name: 'Brando', surname: 'Campisi', team: 'U14B', telefono: '3803421368', dataNascita: '2016-01-26' },
-            { id: 'p30', name: 'Christian', surname: 'Randazzo', team: 'U14B', telefono: '3338570968', dataNascita: '2016-09-25' },
-            { id: 'p31', name: 'Federico', surname: 'Tripodi', team: 'U14B', telefono: '3200878425', dataNascita: '2017-06-23' },
-            { id: 'p32', name: 'Vittorio Ascanio', surname: 'Assenza', team: 'U14B', telefono: '3394943830', dataNascita: '2015-05-03' },
-            { id: 'p33', name: 'Leonardo', surname: 'Assenza', team: 'U14B', telefono: '3394943830', dataNascita: '2017-02-02' },
-            { id: 'p34', name: 'FEDERICO', surname: 'DI ROSOLIN', team: 'U14B', telefono: '3201186384', dataNascita: '2015-01-12' },
-            { id: 'p35', name: 'Andrea', surname: 'Moscuzza', team: 'U14B', telefono: '3421938861', dataNascita: '2013-02-26' },
-            { id: 'p36', name: 'Raffaele', surname: 'Barranco', team: 'U16A', telefono: '3200108107', dataNascita: '2012-10-23' },
-            { id: 'p37', name: 'Lorenzo', surname: 'Rizza', team: 'U16A', telefono: '3319472526', dataNascita: '2012-08-16' },
-            { id: 'p38', name: 'Riccardo', surname: 'Liistro', team: 'U16A', telefono: '3409550494', dataNascita: '2012-09-04' },
-            { id: 'p39', name: 'Manuele', surname: 'Mazzullo', team: 'U16A', telefono: '3208060561', dataNascita: '2012-05-13' },
-            { id: 'p40', name: 'Giuseppe', surname: 'Rindinella', team: 'U16A', telefono: '3293652745', dataNascita: '2011-08-22' },
-            { id: 'p41', name: 'Mattia', surname: 'Primavera', team: 'U16A', telefono: '3298166333', dataNascita: '2012-01-18' },
-            { id: 'p42', name: 'Riccardo', surname: 'Garofalo', team: 'U16A', telefono: '3451155001', dataNascita: '2011-02-24' },
-            { id: 'p43', name: 'Lorenzo', surname: 'Rametta', team: 'U16A', telefono: '3487412912', dataNascita: '2011-07-06' },
-            { id: 'p44', name: 'Flavio', surname: 'Tripodi', team: 'U16A', telefono: '3200877425', dataNascita: '2012-07-19' },
-            { id: 'p45', name: 'Andrea', surname: 'Lutri', team: 'U16A', telefono: '3358415319', dataNascita: '2012-06-21' },
-            { id: 'p46', name: 'Fabrizio', surname: 'Triolo', team: 'U16A', telefono: '3337824618', dataNascita: '2012-07-22' },
-            { id: 'p47', name: 'Alfredo', surname: 'Cilio', team: 'U16A', telefono: '3388512193', dataNascita: '2012-10-05' },
-            { id: 'p48', name: 'Matteo', surname: 'La Porta', team: 'U16B', telefono: '3921568760', dataNascita: '2012-07-11' },
-            { id: 'p49', name: 'Leonardo', surname: 'D\'Anna', team: 'U16B', telefono: '3206288787', dataNascita: '2012-02-01' },
-            { id: 'p50', name: 'Gabriele', surname: 'Caia', team: 'U16B', telefono: '3298887583', dataNascita: '2011-11-25' },
-            { id: 'p51', name: 'EMANUELE', surname: 'LAMERA', team: 'U16B', telefono: '3397048336', dataNascita: '2012-12-12' },
-            { id: 'p52', name: 'Francesco', surname: 'Giunta', team: 'U16B', telefono: '3400935658', dataNascita: '2012-08-31' },
-            { id: 'p53', name: 'Andrea', surname: 'Romano', team: 'U16B', telefono: '3383957911', dataNascita: '2011-07-07' },
-            { id: 'p54', name: 'Riccardo', surname: 'Pirosa', team: 'U16B', telefono: '3338028999', dataNascita: '2011-10-24' },
-            { id: 'p55', name: 'Federico', surname: 'Agnello', team: 'U16B', telefono: '3294451056', dataNascita: '2011-06-03' },
-            { id: 'p56', name: 'Christian', surname: 'Satta', team: 'U16B', telefono: '3491692886', dataNascita: '2012-11-23' },
-            { id: 'p57', name: 'Matteo', surname: 'Amore', team: 'U16B', telefono: '3474705727', dataNascita: '2011-09-24' },
-            { id: 'p58', name: 'Andrea', surname: 'Grande', team: 'U18', telefono: '3398436392', dataNascita: '2010-10-01' },
-            { id: 'p59', name: 'Andrea', surname: 'Di Martino', team: 'U18', telefono: '', dataNascita: '' },
-            { id: 'p60', name: 'Ivan', surname: 'Vila', team: 'U18', telefono: '', dataNascita: '' },
-            { id: 'p61', name: 'Ennio', surname: 'Reale', team: 'U18', telefono: '', dataNascita: '' },
-            { id: 'p62', name: 'Lorenzo', surname: 'Della Bina', team: 'U18', telefono: '', dataNascita: '' },
-            { id: 'p63', name: 'Francesco', surname: 'Palestro', team: 'U18', telefono: '', dataNascita: '' },
-            { id: 'p64', name: 'Nicolo', surname: 'Santandrea', team: 'U18', telefono: '', dataNascita: '' },
-            { id: 'p65', name: 'Salvo', surname: 'Attivelli', team: 'U18', telefono: '', dataNascita: '' },
-            { id: 'p66', name: 'Antonino', surname: 'Panicola', team: 'U18', telefono: '', dataNascita: '' },
-            { id: 'p67', name: 'Ivan', surname: 'Vernuccio', team: 'U18', telefono: '', dataNascita: '' }
-        ];
+        // Datos del PDF por si se borrase la BD (backup inicial)
+        const initialData = [{"id":"p1","name":"Sveva","surname":"Caruso","team":"BIMBA","telefono":"3899980000","dataNascita":"2018-05-23"},{"id":"p2","name":"Tommaso","surname":"Spada","team":"BIMBO","telefono":"3715346633","dataNascita":"2020-08-01"},{"id":"p3","name":"Ginevra","surname":"Barranco","team":"U14 FEMMINILE","telefono":"3200108107","dataNascita":"2016-09-29"},{"id":"p4","name":"Viola","surname":"Bottaro","team":"U14 FEMMINILE","telefono":"3461900038","dataNascita":"2016-04-02"},{"id":"p5","name":"Bianca","surname":"Bottaro","team":"U14 FEMMINILE","telefono":"3461900038","dataNascita":"2016-04-02"},{"id":"p6","name":"Annachiara","surname":"Lorefice","team":"U14 FEMMINILE","telefono":"3332106049","dataNascita":"2015-08-28"},{"id":"p7","name":"Ludovica Lucia","surname":"Lorefice","team":"U14 FEMMINILE","telefono":"3332106049","dataNascita":"2015-12-10"},{"id":"p8","name":"Agnese","surname":"Lutri","team":"U14 FEMMINILE","telefono":"3358415319","dataNascita":"2014-01-01"},{"id":"p9","name":"Yassmine","surname":"Ben hadda","team":"U14 FEMMINILE","telefono":"3296943861","dataNascita":"2013-04-07"},{"id":"p10","name":"Rachele","surname":"Santoro","team":"U14 FEMMINILE","telefono":"3519957519","dataNascita":"2013-08-13"},{"id":"p11","name":"Vittoria","surname":"Carpanzano","team":"U14 FEMMINILE","telefono":"3273386743","dataNascita":"2014-03-07"},{"id":"p12","name":"Samuele","surname":"Fazzina","team":"U14A","telefono":"3383066302","dataNascita":"2013-12-23"},{"id":"p13","name":"Alessio","surname":"Valente","team":"U14A","telefono":"3298275557","dataNascita":"2014-09-09"},{"id":"p14","name":"Vincenzo","surname":"Sampieri","team":"U14A","telefono":"3803871388","dataNascita":"2013-06-25"},{"id":"p15","name":"Francesco","surname":"Bisicchia","team":"U14A","telefono":"3289542081","dataNascita":"2013-04-06"},{"id":"p16","name":"Federico","surname":"Scatà","team":"U14A","telefono":"3288688962","dataNascita":"2013-03-19"},{"id":"p17","name":"Nicolò","surname":"Licitra","team":"U14A","telefono":"3336841533","dataNascita":"2013-11-28"},{"id":"p18","name":"Riccardo","surname":"Bottaro","team":"U14A","telefono":"3461900038","dataNascita":"2013-03-13"},{"id":"p19","name":"Elia","surname":"Ramondetta","team":"U14A","telefono":"3513359100","dataNascita":"2013-10-23"},{"id":"p20","name":"Alessandro","surname":"Burgio","team":"U14A","telefono":"3456900992","dataNascita":"2013-11-15"},{"id":"p21","name":"Mariano","surname":"Garofalo","team":"U14A","telefono":"3451155001","dataNascita":"2014-02-14"},{"id":"p22","name":"Giovanni","surname":"Russo","team":"U14B","telefono":"3288174699","dataNascita":"2015-06-25"},{"id":"p23","name":"Mario","surname":"Russo","team":"U14B","telefono":"3288174699","dataNascita":"2015-06-25"},{"id":"p24","name":"Davide","surname":"Tine'","team":"U14B","telefono":"3895377563","dataNascita":"2016-02-17"},{"id":"p25","name":"Daniele","surname":"Lamera","team":"U14B","telefono":"3397048336","dataNascita":"2016-09-28"},{"id":"p26","name":"Andrea","surname":"Monteneri","team":"U14B","telefono":"3471387017","dataNascita":"2016-02-10"},{"id":"p27","name":"Giordano","surname":"Torneo","team":"U14B","telefono":"3316348298","dataNascita":"2015-04-02"},{"id":"p28","name":"Alessandro","surname":"Giunta","team":"U14B","telefono":"3400935658","dataNascita":"2016-04-11"},{"id":"p29","name":"Brando","surname":"Campisi","team":"U14B","telefono":"3803421368","dataNascita":"2016-01-26"},{"id":"p30","name":"Christian","surname":"Randazzo","team":"U14B","telefono":"3338570968","dataNascita":"2016-09-25"},{"id":"p31","name":"Federico","surname":"Tripodi","team":"U14B","telefono":"3200878425","dataNascita":"2017-06-23"},{"id":"p32","name":"Vittorio Ascanio","surname":"Assenza","team":"U14B","telefono":"3394943830","dataNascita":"2015-05-03"},{"id":"p33","name":"Leonardo","surname":"Assenza","team":"U14B","telefono":"3394943830","dataNascita":"2017-02-02"},{"id":"p34","name":"FEDERICO","surname":"DI ROSOLIN","team":"U14B","telefono":"3201186384","dataNascita":"2015-01-12"},{"id":"p35","name":"Andrea","surname":"Moscuzza","team":"U14B","telefono":"3421938861","dataNascita":"2013-02-26"},{"id":"p36","name":"Raffaele","surname":"Barranco","team":"U16A","telefono":"3200108107","dataNascita":"2012-10-23"},{"id":"p37","name":"Lorenzo","surname":"Rizza","team":"U16A","telefono":"3319472526","dataNascita":"2012-08-16"},{"id":"p38","name":"Riccardo","surname":"Liistro","team":"U16A","telefono":"3409550494","dataNascita":"2012-09-04"},{"id":"p39","name":"Manuele","surname":"Mazzullo","team":"U16A","telefono":"3208060561","dataNascita":"2012-05-13"},{"id":"p40","name":"Giuseppe","surname":"Rindinella","team":"U16A","telefono":"3293652745","dataNascita":"2011-08-22"},{"id":"p41","name":"Mattia","surname":"Primavera","team":"U16A","telefono":"3298166333","dataNascita":"2012-01-18"},{"id":"p42","name":"Riccardo","surname":"Garofalo","team":"U16A","telefono":"3451155001","dataNascita":"2011-02-24"},{"id":"p43","name":"Lorenzo","surname":"Rametta","team":"U16A","telefono":"3487412912","dataNascita":"2011-07-06"},{"id":"p44","name":"Flavio","surname":"Tripodi","team":"U16A","telefono":"3200877425","dataNascita":"2012-07-19"},{"id":"p45","name":"Andrea","surname":"Lutri","team":"U16A","telefono":"3358415319","dataNascita":"2012-06-21"},{"id":"p46","name":"Fabrizio","surname":"Triolo","team":"U16A","telefono":"3337824618","dataNascita":"2012-07-22"},{"id":"p47","name":"Alfredo","surname":"Cilio","team":"U16A","telefono":"3388512193","dataNascita":"2012-10-05"},{"id":"p48","name":"Matteo","surname":"La Porta","team":"U16B","telefono":"3921568760","dataNascita":"2012-07-11"},{"id":"p49","name":"Leonardo","surname":"D'Anna","team":"U16B","telefono":"3206288787","dataNascita":"2012-02-01"},{"id":"p50","name":"Gabriele","surname":"Caia","team":"U16B","telefono":"3298887583","dataNascita":"2011-11-25"},{"id":"p51","name":"EMANUELE","surname":"LAMERA","team":"U16B","telefono":"3397048336","dataNascita":"2012-12-12"},{"id":"p52","name":"Francesco","surname":"Giunta","team":"U16B","telefono":"3400935658","dataNascita":"2012-08-31"},{"id":"p53","name":"Andrea","surname":"Romano","team":"U16B","telefono":"3383957911","dataNascita":"2011-07-07"},{"id":"p54","name":"Riccardo","surname":"Pirosa","team":"U16B","telefono":"3338028999","dataNascita":"2011-10-24"},{"id":"p55","name":"Federico","surname":"Agnello","team":"U16B","telefono":"3294451056","dataNascita":"2011-06-03"},{"id":"p56","name":"Christian","surname":"Satta","team":"U16B","telefono":"3491692886","dataNascita":"2012-11-23"},{"id":"p57","name":"Matteo","surname":"Amore","team":"U16B","telefono":"3474705727","dataNascita":"2011-09-24"},{"id":"p58","name":"Andrea","surname":"Grande","team":"U18","telefono":"3398436392","dataNascita":"2010-10-01"},{"id":"p59","name":"Andrea","surname":"Di Martino","team":"U18","telefono":"","dataNascita":""},{"id":"p60","name":"Ivan","surname":"Vila","team":"U18","telefono":"","dataNascita":""},{"id":"p61","name":"Ennio","surname":"Reale","team":"U18","telefono":"","dataNascita":""},{"id":"p62","name":"Lorenzo","surname":"Della Bina","team":"U18","telefono":"","dataNascita":""},{"id":"p63","name":"Francesco","surname":"Palestro","team":"U18","telefono":"","dataNascita":""},{"id":"p64","name":"Nicolo","surname":"Santandrea","team":"U18","telefono":"","dataNascita":""},{"id":"p65","name":"Salvo","surname":"Attivelli","team":"U18","telefono":"","dataNascita":""},{"id":"p66","name":"Antonino","surname":"Panicola","team":"U18","telefono":"","dataNascita":""},{"id":"p67","name":"Ivan","surname":"Vernuccio","team":"U18","telefono":"","dataNascita":""}];
 
         window.onload = async () => {
             initUI();
             setupEventListeners();
             
             try {
-                // Iniciar sesión anónima (necesario para leer/escribir)
                 await signInAnonymously(auth);
                 initCloudData();
             } catch (error) {
@@ -381,42 +349,40 @@
             }
         };
 
-        const getPlayersPath = () => `players`; 
-        const getAttendancePath = () => `attendance`; 
-
         function initCloudData() {
-            // Escuchar colección de jugadores en tiempo real
+            // Escuchar Jugadores
             onSnapshot(collection(db, getPlayersPath()), async (snapshot) => {
+                const cloudPlayerCount = snapshot.size;
                 
-                // Si tienes menos de los 67 jugadores iniciales, FUERZA LA SUBIDA sin borrar lo existente
-                if (snapshot.size < 67) {
-                    console.log("Forzando sincronizzazione giocatori mancanti...");
-                    for (const p of initialData) {
-                        const pData = { ...p, photo: null, dataIscrizione: '2026-09-01' };
-                        // Usar { merge: true } asegura que si ya subiste 3, no se borren, solo se añaden los 64 restantes
-                        await setDoc(doc(db, getPlayersPath(), p.id), pData, { merge: true });
+                // Si faltan jugadores respecto al inicial, forzar subida inteligente
+                if (cloudPlayerCount < initialData.length) {
+                    const existingIds = [];
+                    snapshot.forEach(doc => existingIds.push(doc.id));
+                    const missingPlayers = initialData.filter(p => !existingIds.includes(p.id));
+                    
+                    for (const p of missingPlayers) {
+                         const pData = { ...p, photo: null, dataIscrizione: '2026-09-01' };
+                         await setDoc(doc(db, getPlayersPath(), p.id), pData);
                     }
-                } 
-                
-                // Cargar jugadores en la interfaz
+                }
+
                 players = [];
                 snapshot.forEach(doc => {
                     players.push(doc.data());
                 });
                 
-                // Si la sincronización terminó y tenemos jugadores, actualizar UI y ocultar banner
-                if(players.length >= 67) {
-                    populateTeamSelectors();
-                    renderViews();
-                    hideSyncBanner();
-                }
+                players.sort((a, b) => a.surname.localeCompare(b.surname)); // Orden alfabético global
+                
+                populateTeamSelectors();
+                renderViews();
+                hideSyncBanner();
                 
             }, (error) => {
                 console.error("Error listening to players: ", error);
             });
 
-            // Escuchar asistencia en tiempo real
-            onSnapshot(collection(db, getAttendancePath()), (snapshot) => {
+            // Escuchar Asistencias
+            onSnapshot(collection(db, getAttendancePath()), async (snapshot) => {
                  if (!snapshot.empty) {
                      attendance = {};
                      snapshot.forEach(doc => {
@@ -438,6 +404,7 @@
             if (!document.getElementById('viewAppello').classList.contains('hidden')) renderAppelloList();
             if (!document.getElementById('viewStorico').classList.contains('hidden')) renderStorico();
             if (!document.getElementById('viewGiocatori').classList.contains('hidden')) renderGiocatori();
+            if (!document.getElementById('viewSquadre').classList.contains('hidden')) renderSquadre();
         }
 
         function initUI() {
@@ -526,7 +493,6 @@
                 await setDoc(doc(db, getAttendancePath(), date), { records: attendance[date] });
             } catch(e) {
                 console.error("Cloud Error:", e);
-                alert("Errore di sincronizzazione"); 
             }
         }
 
@@ -673,8 +639,6 @@
                 );
             }
 
-            targetPlayers.sort((a, b) => a.surname.localeCompare(b.surname));
-
             targetPlayers.forEach(player => {
                 const card = document.createElement('div');
                 card.className = 'bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors';
@@ -697,8 +661,11 @@
                     if(!isNaN(d)) entryDateStr = ` • Iscr: ${d.toLocaleDateString('it-IT')}`;
                 }
 
+                // Etiqueta "NUOVO" si viene de Google Sheets
+                const isNewBadge = player.isNew ? `<span class="bg-yellow-400 text-yellow-900 text-[9px] font-bold px-2 py-0.5 rounded-full ml-2 animate-pulse shadow-sm border border-yellow-500">NUOVO</span>` : '';
+
                 infoDiv.innerHTML = `
-                    <p class="font-semibold text-gray-800 leading-tight">${player.surname} ${player.name}</p>
+                    <p class="font-semibold text-gray-800 leading-tight flex items-center">${player.surname} ${player.name} ${isNewBadge}</p>
                     <p class="text-xs text-gray-500 mt-1">${player.team}${entryDateStr}</p>
                 `;
 
@@ -728,37 +695,77 @@
             }
         }
 
-        window.switchTab = function(tab) {
-            const vAppello = document.getElementById('viewAppello');
-            const vStorico = document.getElementById('viewStorico');
-            const vGiocatori = document.getElementById('viewGiocatori');
-            const tAppello = document.getElementById('tabAppello');
-            const tStorico = document.getElementById('tabStorico');
-            const tGiocatori = document.getElementById('tabGiocatori');
+        // --- NUEVA FUNCIÓN PARA LA VISTA DE EQUIPOS ---
+        function renderSquadre() {
+            const container = document.getElementById('squadreList');
+            container.innerHTML = '';
+            
+            const teams = [...new Set(players.map(p => p.team))].sort();
 
-            vAppello.classList.add('hidden');
-            vStorico.classList.add('hidden');
-            vGiocatori.classList.add('hidden');
+            teams.forEach(team => {
+                const teamPlayers = players.filter(p => p.team === team);
+                
+                const card = document.createElement('div');
+                card.className = 'bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer';
+                card.onclick = () => {
+                    document.getElementById('rosterTeamSelector').value = team;
+                    switchTab('giocatori');
+                };
+                
+                // Header (Name + Count)
+                const header = document.createElement('div');
+                header.className = 'flex justify-between items-center mb-4';
+                header.innerHTML = `
+                    <h3 class="text-lg font-bold text-gray-800">${team}</h3>
+                    <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full">${teamPlayers.length} Giocatori</span>
+                `;
+                
+                // Mini Avatars grid (show up to 7 players)
+                const avatarsContainer = document.createElement('div');
+                avatarsContainer.className = 'avatar-group';
+                
+                const displayPlayers = teamPlayers.slice(0, 7);
+                displayPlayers.forEach(p => {
+                    const avi = document.createElement('div');
+                    avi.className = 'avatar-mini';
+                    if (p.photo) {
+                        avi.innerHTML = `<img src="${p.photo}" alt="${p.name}">`;
+                    } else {
+                        avi.textContent = getInitials(p.name, p.surname);
+                    }
+                    avatarsContainer.appendChild(avi);
+                });
+
+                if (teamPlayers.length > 7) {
+                    const moreAvi = document.createElement('div');
+                    moreAvi.className = 'avatar-mini bg-gray-100 text-gray-500 border-gray-200';
+                    moreAvi.textContent = `+${teamPlayers.length - 7}`;
+                    avatarsContainer.appendChild(moreAvi);
+                }
+
+                card.appendChild(header);
+                card.appendChild(avatarsContainer);
+                container.appendChild(card);
+            });
+        }
+
+        window.switchTab = function(tab) {
+            const views = ['viewAppello', 'viewStorico', 'viewSquadre', 'viewGiocatori'];
+            const tabs = ['tabAppello', 'tabStorico', 'tabSquadre', 'tabGiocatori'];
+
+            views.forEach(v => document.getElementById(v).classList.add('hidden'));
             
             const inactiveClass = 'flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none';
             const activeClass = 'flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none';
             
-            tAppello.className = inactiveClass;
-            tStorico.className = inactiveClass;
-            tGiocatori.className = inactiveClass;
+            tabs.forEach(t => document.getElementById(t).className = inactiveClass);
 
-            if (tab === 'appello') {
-                vAppello.classList.remove('hidden');
-                tAppello.className = activeClass;
-            } else if (tab === 'storico') {
-                vStorico.classList.remove('hidden');
-                tStorico.className = activeClass;
-                renderStorico();
-            } else if (tab === 'giocatori') {
-                vGiocatori.classList.remove('hidden');
-                tGiocatori.className = activeClass;
-                renderGiocatori();
-            }
+            document.getElementById('view' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
+            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).className = activeClass;
+
+            if (tab === 'storico') renderStorico();
+            else if (tab === 'giocatori') renderGiocatori();
+            else if (tab === 'squadre') renderSquadre();
         };
 
         window.openPlayerModal = function(playerId = null) {
@@ -822,24 +829,30 @@
                     dataNascita: birth,
                     dataIscrizione: entry
                 };
+                // Si el jugador era nuevo y lo editamos/guardamos, le quitamos la etiqueta de nuevo
+                if (playerObj.isNew) {
+                    delete playerObj.isNew;
+                }
             } else {
                 playerObj = {
                     id: 'p' + Date.now(),
-                    name: name,
-                    surname: surname,
-                    team: team,
-                    telefono: phone,
-                    dataNascita: birth,
-                    dataIscrizione: entry,
-                    photo: null
-                };
-            }
+            // Start Cloud Save (will trigger UI update via snapshot)
             savePlayerToCloud(playerObj);
+        };
+
+        window.openConfirmDelete = function() {
+            document.getElementById('confirmModal').classList.remove('hidden');
+        };
+
+        window.closeConfirmDelete = function() {
+            document.getElementById('confirmModal').classList.add('hidden');
         };
 
         window.deletePlayer = function() {
             const id = document.getElementById('editPlayerId').value;
             if(!id) return;
+            
+            closeConfirmDelete();
             deletePlayerFromCloud(id);
         };
 
@@ -968,3 +981,10 @@
     </script>
 </body>
 </html>
+```
+
+### Sobre la integración con el Excel/Formulario:
+Si te interesa hacerlo, la forma más profesional y gratuita es usar **Google Apps Script**. Básicamente, escribiré un código corto que pegarás dentro de tu Excel de Google. Cada vez que entre una respuesta nueva al formulario, ese código "hablará" con Firebase y añadirá al jugador mágicamente.
+
+Dime si quieres que te prepare las instrucciones y el código para hacerlo, ¡es bastante rápido!
+```
