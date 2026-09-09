@@ -33,7 +33,7 @@
 
     <!-- Cloud Sync Status Banner -->
     <div id="cloudSyncBanner" class="fixed left-0 w-full bg-yellow-500 text-white text-xs font-bold text-center py-1 z-50 banner-visible shadow-md flex justify-center items-center gap-2">
-        <i class="fa-solid fa-cloud-arrow-up animate-bounce"></i> <span id="syncText">Sincronizzazione in corso...</span>
+        <i class="fa-solid fa-cloud-arrow-up animate-bounce"></i> <span id="syncText">Connessione al database...</span>
     </div>
 
     <!-- Header -->
@@ -67,7 +67,7 @@
             <div id="playersList" class="space-y-3 mt-4">
                 <div class="text-center text-gray-500 mt-10 py-10">
                     <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-3 text-gray-300"></i>
-                    <p>Connessione al Cloud in corso...</p>
+                    <p>Caricamento giocatori...</p>
                 </div>
             </div>
         </div>
@@ -272,52 +272,29 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // === CONFIGURACIÓN PARA TU PROPIA APP (FUERA DE ESTE CHAT) ===
-        // PASO 3: Cuando crees tu proyecto en Firebase, reemplaza estos valores con los tuyos
-        const myFirebaseConfig = {
-            apiKey: "TU_API_KEY",
-            authDomain: "tu-proyecto.firebaseapp.com",
-            projectId: "tu-proyecto",
-            storageBucket: "tu-proyecto.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdef"
+        // === CONFIGURACIÓN DE TU FIREBASE ===
+        const firebaseConfig = {
+            apiKey: "AIzaSyAEzLuN2TT77foODRGwAo3UY16VolP9nzY",
+            authDomain: "gestione-presenze-b52c7.firebaseapp.com",
+            databaseURL: "https://gestione-presenze-b52c7-default-rtdb.firebaseio.com",
+            projectId: "gestione-presenze-b52c7",
+            storageBucket: "gestione-presenze-b52c7.firebasestorage.app",
+            messagingSenderId: "8099106330",
+            appId: "1:8099106330:web:a69dfd06a4662bd8474ba3"
         };
-        // ==============================================================
+        // =====================================
 
-        // Detectar si estamos en el entorno de prueba del chat o en tu propia web
-        const isCanvasEnv = typeof __firebase_config !== 'undefined';
-        
-        // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAEzLuN2TT77foODRGwAo3UY16VolP9nzY",
-  authDomain: "gestione-presenze-b52c7.firebaseapp.com",
-  databaseURL: "https://gestione-presenze-b52c7-default-rtdb.firebaseio.com",
-  projectId: "gestione-presenze-b52c7",
-  storageBucket: "gestione-presenze-b52c7.firebasestorage.app",
-  messagingSenderId: "8099106330",
-  appId: "1:8099106330:web:a69dfd06a4662bd8474ba3"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-        
         // Init Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        let currentUserId = null;
 
         // State
         let players = [];
-        let attendance = {}; // Format: { "YYYY-MM-DD": { playerId: "present" | "absent" } }
+        let attendance = {}; 
         let currentEditingPlayerId = null;
 
         // Data from PDF (Fallback if Cloud is empty)
@@ -396,53 +373,28 @@ const app = initializeApp(firebaseConfig);
             setupEventListeners();
             
             try {
-                // Autenticación: usa token especial en el chat, o inicio anónimo en tu propia web
-                if (isCanvasEnv && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                currentUserId = auth.currentUser.uid;
+                // Iniciar sesión anónima en tu Firebase
+                await signInAnonymously(auth);
                 initCloudData();
             } catch (error) {
                 console.error("Auth Error:", error);
-                document.getElementById('syncText').textContent = "Errore di connessione cloud";
+                document.getElementById('syncText').textContent = "Errore di connessione. Verifica le regole di sicurezza (Test Mode).";
                 document.getElementById('cloudSyncBanner').classList.replace('bg-yellow-500', 'bg-red-500');
             }
         };
 
-        // Rutas dinámicas (Protegen el entorno de prueba, pero usan rutas limpias en tu base de datos)
-        const getPlayersPath = () => isCanvasEnv 
-            ? `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default'}/users/${currentUserId}/players`
-            : `users/${currentUserId}/players`; 
-            
-        const getAttendancePath = () => isCanvasEnv 
-            ? `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default'}/users/${currentUserId}/attendance`
-            : `users/${currentUserId}/attendance`; 
+        // Rutas fijas para tu base de datos
+        const getPlayersPath = () => `players`; 
+        const getAttendancePath = () => `attendance`; 
 
         function initCloudData() {
-            // Check for legacy local data to migrate
-            const savedLocalPlayers = localStorage.getItem('app_players');
-            const savedLocalAttendance = localStorage.getItem('app_attendance');
-
             // Listen for Players Collection
             onSnapshot(collection(db, getPlayersPath()), async (snapshot) => {
                 if (snapshot.empty && players.length === 0) {
                     // Seed initial data if cloud is empty
-                    if (savedLocalPlayers) {
-                        // Migrate local data to cloud
-                        let parsedLocal = JSON.parse(savedLocalPlayers);
-                        for (const p of parsedLocal) {
-                             if(!p.dataIscrizione) p.dataIscrizione = '2026-09-01';
-                             await setDoc(doc(db, getPlayersPath(), p.id), p);
-                        }
-                        localStorage.removeItem('app_players'); // Clean up after migration
-                    } else {
-                        // Seed default data
-                        for (const p of initialData) {
-                            const pData = { ...p, photo: null, dataIscrizione: '2026-09-01' };
-                            await setDoc(doc(db, getPlayersPath(), p.id), pData);
-                        }
+                    for (const p of initialData) {
+                        const pData = { ...p, photo: null, dataIscrizione: '2026-09-01' };
+                        await setDoc(doc(db, getPlayersPath(), p.id), pData);
                     }
                 } else {
                     players = [];
@@ -459,14 +411,7 @@ const app = initializeApp(firebaseConfig);
 
             // Listen for Attendance Collection
             onSnapshot(collection(db, getAttendancePath()), async (snapshot) => {
-                 if (snapshot.empty && savedLocalAttendance) {
-                     // Migrate local attendance to cloud
-                     let parsedAtt = JSON.parse(savedLocalAttendance);
-                     for (const dateKey in parsedAtt) {
-                         await setDoc(doc(db, getAttendancePath(), dateKey), { records: parsedAtt[dateKey] });
-                     }
-                     localStorage.removeItem('app_attendance');
-                 } else {
+                 if (!snapshot.empty) {
                      attendance = {};
                      snapshot.forEach(doc => {
                          attendance[doc.id] = doc.data().records || {};
@@ -563,8 +508,6 @@ const app = initializeApp(firebaseConfig);
         }
 
         async function markAttendance(date, playerId, status) {
-            if (!currentUserId) return;
-
             // Optimistic UI Update for immediate feedback
             if (!attendance[date]) attendance[date] = {};
             if (attendance[date][playerId] === status) {
@@ -579,12 +522,11 @@ const app = initializeApp(firebaseConfig);
                 await setDoc(doc(db, getAttendancePath(), date), { records: attendance[date] });
             } catch(e) {
                 console.error("Cloud Error:", e);
-                alert("Errore di sincronizzazione"); // Only fallback for critical cloud error
+                alert("Errore di sincronizzazione"); 
             }
         }
 
         async function savePlayerToCloud(playerObj) {
-            if (!currentUserId) return;
             try {
                 await setDoc(doc(db, getPlayersPath(), playerObj.id), playerObj);
                 closePlayerModal();
@@ -594,7 +536,6 @@ const app = initializeApp(firebaseConfig);
         }
 
         async function deletePlayerFromCloud(playerId) {
-            if (!currentUserId) return;
             try {
                  await deleteDoc(doc(db, getPlayersPath(), playerId));
                  closePlayerModal();
@@ -889,17 +830,13 @@ const app = initializeApp(firebaseConfig);
                     photo: null
                 };
             }
-            // Start Cloud Save (will trigger UI update via snapshot)
+            // Start Cloud Save
             savePlayerToCloud(playerObj);
         };
 
         window.deletePlayer = function() {
             const id = document.getElementById('editPlayerId').value;
             if(!id) return;
-            
-            // Custom modal could be used here, but confirm is prevented by iframe rules sometimes. 
-            // Since this app might run natively, we can use a basic JS prompt equivalent logic or just delete.
-            // A simple delete is best for touch interfaces if the delete button is well hidden inside edit.
             deletePlayerFromCloud(id);
         };
 
