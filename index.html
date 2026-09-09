@@ -2,180 +2,157 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Gestione Presenze PRO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestione Presenze Giocatori Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
         
-        :root {
-            --primary: #2563eb;
-            --primary-light: #eff6ff;
-            --success: #10b981;
-            --danger: #ef4444;
-            --bg-color: #f8fafc;
-        }
-
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: var(--bg-color); 
-            -webkit-tap-highlight-color: transparent; 
-        }
-
-        /* Ocultar barra de scroll pero permitir scroll */
-        ::-webkit-scrollbar { display: none; }
-        * { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Componentes UI Pro */
-        .glass-modal { background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
-        .card-pro { transition: all 0.2s ease; border: 1px solid #f1f5f9; }
-        .card-pro:active { transform: scale(0.98); }
+        /* Modern Navigation */
+        .tab-active { color: #2563eb; font-weight: 600; }
+        .tab-active i { background-color: #eff6ff; padding: 0.4rem 1.2rem; border-radius: 9999px; }
+        .tab-inactive { color: #6b7280; font-weight: 500; }
+        .tab-inactive i { padding: 0.4rem 1.2rem; }
         
         .avatar-img { object-fit: cover; width: 100%; height: 100%; border-radius: 50%; }
         
-        /* Toggle Switch Styles - Enhanced */
-        .status-btn { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .status-present { background-color: var(--success); color: white; border-color: var(--success); transform: scale(1.05); box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); }
-        .status-absent { background-color: var(--danger); color: white; border-color: var(--danger); transform: scale(1.05); box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3); }
-        .status-none { background-color: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; }
+        /* Smooth Toggles */
+        .status-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .status-present { background-color: #10b981; color: white; border-color: #10b981; transform: scale(1.05); }
+        .status-absent { background-color: #ef4444; color: white; border-color: #ef4444; transform: scale(1.05); }
+        .status-none { background-color: #f3f4f6; color: #9ca3af; border-color: #e5e7eb; }
         
-        /* Bottom Nav Pro */
-        .nav-item { transition: all 0.3s ease; }
-        .nav-active .nav-pill { background-color: var(--primary-light); color: var(--primary); font-weight: 600; padding: 0.5rem 1rem; border-radius: 9999px; }
-        .nav-inactive { color: #64748b; }
-        .nav-inactive .nav-pill { padding: 0.5rem 1rem; }
+        ::-webkit-scrollbar { display: none; }
 
+        /* Glassmorphism Modals */
+        .modal-backdrop { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); background-color: rgba(0, 0, 0, 0.4); }
+        
         /* Toast Notifications */
-        #toast-container { pointer-events: none; }
-        .toast { transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); transform: translateY(150%); opacity: 0; }
+        #toastContainer { pointer-events: none; }
+        .toast { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(100%); opacity: 0; }
         .toast.show { transform: translateY(0); opacity: 1; }
 
-        /* Cloud Sync Banner */
+        /* Sync Banner */
         #cloudSyncBanner { transition: top 0.3s ease-in-out; }
         .banner-visible { top: 0; }
         .banner-hidden { top: -50px; }
         
-        /* Mini Avatars */
-        .avatar-group { display: flex; align-items: center; }
-        .avatar-mini { width: 36px; height: 36px; border-radius: 50%; border: 2px solid white; margin-left: -12px; background-color: var(--primary-light); color: var(--primary); display: flex; justify-content: center; align-items: center; font-size: 11px; font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .avatar-mini:first-child { margin-left: 0; }
-        .avatar-mini img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-
-        /* Pulsing Badge */
-        @keyframes pulse-soft {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
+        /* Animations */
+        @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .badge-new { animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     </style>
 </head>
-<body class="text-slate-800 flex flex-col h-screen overflow-hidden relative selection:bg-blue-200">
+<body class="text-gray-800 flex flex-col h-screen overflow-hidden relative">
 
-    <!-- Toast Notifications Container -->
-    <div id="toast-container" class="fixed bottom-24 left-0 w-full flex flex-col items-center gap-2 z-50 px-4"></div>
-
-    <!-- Cloud Sync Status Banner -->
+    <!-- Sync Banner -->
     <div id="cloudSyncBanner" class="fixed left-0 w-full bg-blue-600 text-white text-xs font-semibold text-center py-1.5 z-50 banner-visible shadow-md flex justify-center items-center gap-2">
         <i class="fa-solid fa-cloud-arrow-up animate-bounce"></i> <span id="syncText">Sincronizzazione in corso...</span>
     </div>
 
-    <!-- Header PRO -->
-    <header class="bg-white text-slate-800 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] z-10 p-5 pt-10 sticky top-0">
-        <div class="max-w-3xl mx-auto flex justify-between items-center">
+    <!-- Header -->
+    <header class="bg-white text-gray-800 shadow-sm z-10 p-4 pt-8 pb-3 border-b border-gray-100">
+        <div class="max-w-3xl mx-auto flex justify-between items-end">
             <div>
-                <h1 class="text-2xl font-bold tracking-tight flex items-center gap-2 text-blue-600">
-                    Aretusa <span class="text-slate-800">App</span>
+                <h1 class="text-xl font-bold flex items-center gap-2 text-gray-900">
+                    <div class="bg-blue-600 text-white w-8 h-8 rounded-lg flex items-center justify-center text-sm shadow-sm"><i class="fa-solid fa-clipboard-check"></i></div>
+                    Aretusa Presenze
                 </h1>
-                <p id="currentDateDisplay" class="text-xs text-slate-500 font-medium mt-0.5 uppercase tracking-wider"></p>
             </div>
-            <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 shadow-sm border border-blue-100">
-                <i class="fa-solid fa-shield-halved text-lg"></i>
-            </div>
+            <div id="currentDateDisplay" class="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full"></div>
         </div>
     </header>
 
     <!-- Main Content Area -->
-    <main class="flex-1 overflow-y-auto pb-28 w-full max-w-3xl mx-auto bg-slate-50" id="mainContainer">
+    <main class="flex-1 overflow-y-auto pb-24 w-full max-w-3xl mx-auto" id="mainContainer">
         
         <!-- View 1: Appello (Roll Call) -->
-        <div id="viewAppello" class="p-4 space-y-5">
-            <!-- Controls Card -->
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-4">
-                <div class="flex-1">
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Squadra</label>
-                    <select id="teamSelector" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-base rounded-xl focus:ring-2 focus:ring-blue-500 block p-3 transition-shadow">
-                        <option value="">Caricamento...</option>
-                    </select>
-                </div>
-                <div class="flex-1">
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data Appello</label>
-                    <input type="date" id="attendanceDate" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-base rounded-xl focus:ring-2 focus:ring-blue-500 block p-3 transition-shadow">
-                </div>
+        <div id="viewAppello" class="p-4 space-y-4">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Seleziona Squadra</label>
+                <select id="teamSelector" class="w-full bg-gray-50 border border-gray-200 text-gray-900 font-semibold text-base rounded-xl focus:ring-blue-500 focus:border-blue-500 block p-3 transition-colors">
+                    <option value="">Caricamento...</option>
+                </select>
+            </div>
+            
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">Data Appello</label>
+                <input type="date" id="attendanceDate" class="bg-gray-50 border border-gray-200 text-gray-900 font-semibold text-sm rounded-xl focus:ring-blue-500 focus:border-blue-500 p-2 outline-none">
             </div>
 
-            <!-- Header and Mass Action -->
-            <div class="flex justify-between items-end px-1" id="appelloHeaderStats" style="display: none;">
-                <div>
-                    <h2 class="text-lg font-bold text-slate-800">Elenco Giocatori</h2>
-                    <p class="text-sm text-slate-500" id="attendanceStats">0 Presenti • 0 Assenti</p>
+            <!-- Stats Bar & Mark All -->
+            <div id="appelloControls" class="hidden flex justify-between items-center px-1">
+                <div class="flex gap-3 text-sm font-semibold">
+                    <span class="text-green-600"><i class="fa-solid fa-check"></i> <span id="countPresent">0</span></span>
+                    <span class="text-red-500"><i class="fa-solid fa-xmark"></i> <span id="countAbsent">0</span></span>
+                    <span class="text-gray-400"><i class="fa-regular fa-circle"></i> <span id="countNone">0</span></span>
                 </div>
-                <button onclick="markAllPresent()" class="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-2">
+                <button onclick="markAllPresent()" class="text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-semibold transition-colors flex items-center gap-2">
                     <i class="fa-solid fa-check-double"></i> Tutti Presenti
                 </button>
             </div>
 
             <!-- Players List -->
             <div id="playersList" class="space-y-3 mt-2">
-                <div class="text-center text-slate-400 mt-12 py-10">
-                    <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-4 text-slate-300"></i>
-                    <p class="font-medium">Connessione al Database...</p>
+                <div class="text-center text-gray-400 mt-12 py-12 bg-white rounded-2xl border border-gray-100 border-dashed">
+                    <i class="fa-solid fa-users text-4xl mb-3 text-gray-300"></i>
+                    <p class="font-medium">Seleziona una squadra per l'appello</p>
                 </div>
             </div>
         </div>
 
         <!-- View 2: Storico (History) -->
-        <div id="viewStorico" class="p-4 space-y-5 hidden">
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 grid grid-cols-2 gap-4">
+        <div id="viewStorico" class="p-4 space-y-4 hidden">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Mese</label>
-                    <select id="monthSelector" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-sm rounded-xl p-3">
-                        <option value="01">Gennaio</option><option value="02">Febbraio</option><option value="03">Marzo</option>
-                        <option value="04">Aprile</option><option value="05">Maggio</option><option value="06">Giugno</option>
-                        <option value="07">Luglio</option><option value="08">Agosto</option><option value="09">Settembre</option>
-                        <option value="10">Ottobre</option><option value="11">Novembre</option><option value="12">Dicembre</option>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Mese</label>
+                    <select id="monthSelector" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm font-semibold rounded-xl p-2.5 outline-none">
+                        <option value="01">Gennaio</option>
+                        <option value="02">Febbraio</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Aprile</option>
+                        <option value="05">Maggio</option>
+                        <option value="06">Giugno</option>
+                        <option value="07">Luglio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Settembre</option>
+                        <option value="10">Ottobre</option>
+                        <option value="11">Novembre</option>
+                        <option value="12">Dicembre</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Anno</label>
-                    <select id="yearSelector" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-sm rounded-xl p-3">
-                        <option value="2026">2026</option><option value="2027">2027</option>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Anno</label>
+                    <select id="yearSelector" class="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm font-semibold rounded-xl p-2.5 outline-none">
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
                     </select>
                 </div>
                 <div class="col-span-2">
-                     <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Filtra Squadra</label>
+                     <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Filtra per Squadra</label>
                      <div class="flex gap-2">
-                         <select id="historyTeamSelector" class="flex-1 bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-sm rounded-xl p-3">
+                         <select id="historyTeamSelector" class="flex-1 bg-gray-50 border border-gray-200 text-gray-900 text-sm font-semibold rounded-xl p-2.5 outline-none">
                             <option value="ALL">Tutte le squadre</option>
                          </select>
-                         <button onclick="exportToCSV()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm">
-                             <i class="fa-solid fa-file-excel"></i> Excel
+                         <button onclick="exportToCSV()" class="bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm">
+                             <i class="fa-solid fa-download"></i> CSV
                          </button>
                      </div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left text-slate-600">
-                        <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+                    <table class="w-full text-sm text-left text-gray-600">
+                        <thead class="text-xs text-gray-400 uppercase bg-gray-50 border-b border-gray-100 tracking-wider">
                             <tr>
-                                <th scope="col" class="px-5 py-4 font-bold">Giocatore</th>
-                                <th scope="col" class="px-5 py-4 text-center text-emerald-600 font-bold"><i class="fa-solid fa-check"></i> Pres</th>
-                                <th scope="col" class="px-5 py-4 text-center text-red-500 font-bold"><i class="fa-solid fa-xmark"></i> Ass</th>
+                                <th scope="col" class="px-4 py-3">Giocatore</th>
+                                <th scope="col" class="px-4 py-3 text-center"><i class="fa-solid fa-check text-green-500"></i></th>
+                                <th scope="col" class="px-4 py-3 text-center"><i class="fa-solid fa-xmark text-red-400"></i></th>
                             </tr>
                         </thead>
-                        <tbody id="historyTableBody" class="divide-y divide-slate-100">
+                        <tbody id="historyTableBody">
                             <!-- Populated by JS -->
                         </tbody>
                     </table>
@@ -183,38 +160,26 @@
             </div>
         </div>
 
-        <!-- View 3: Squadre (Dashboard) -->
-        <div id="viewSquadre" class="p-4 space-y-4 hidden">
-            <div class="flex justify-between items-end mb-2 px-1">
-                <h2 class="text-xl font-bold text-slate-800">Dashboard Equipos</h2>
-                <span id="totalPlayersBadge" class="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full">0 Totali</span>
-            </div>
-            <div id="squadreList" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4">
-                <!-- Populated by JS -->
-            </div>
-        </div>
-
-        <!-- View 4: Giocatori (Roster) -->
-        <div id="viewGiocatori" class="p-4 space-y-5 hidden">
-            <div class="flex justify-between items-center px-1">
-                <h2 class="text-xl font-bold text-slate-800">Anagrafica</h2>
-                <button onclick="openPlayerModal()" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-5 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 text-sm">
+        <!-- View 3: Giocatori (Roster) -->
+        <div id="viewGiocatori" class="p-4 space-y-4 hidden">
+            <div class="flex justify-between items-center mb-1">
+                <h2 class="text-xl font-bold text-gray-900">Anagrafica</h2>
+                <button onclick="openPlayerModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-sm transition-transform active:scale-95 flex items-center gap-2 text-sm">
                     <i class="fa-solid fa-plus"></i> Nuovo
                 </button>
             </div>
             
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                        <i class="fa-solid fa-search text-slate-400"></i>
-                    </div>
-                    <input type="text" id="playerSearchInput" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-base rounded-xl focus:ring-2 focus:ring-blue-500 block w-full pl-11 p-3.5 transition-shadow" placeholder="Cerca per nome o cognome...">
-                </div>
-                
-                <div>
-                    <select id="rosterTeamSelector" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 text-slate-800 text-sm rounded-xl p-3 focus:ring-2 focus:ring-blue-500">
-                        <option value="ALL">Tutte le squadre</option>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
+                <div class="flex gap-2">
+                    <select id="rosterTeamSelector" class="w-1/2 bg-gray-50 border border-gray-200 text-gray-900 text-sm font-semibold rounded-xl focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none">
+                        <option value="ALL">Tutte</option>
                     </select>
+                    <div class="relative w-1/2">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fa-solid fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="playerSearchInput" class="bg-gray-50 border border-gray-200 text-gray-900 text-sm font-semibold rounded-xl focus:ring-blue-500 focus:border-blue-500 block w-full pl-9 p-2.5 outline-none" placeholder="Cerca...">
+                    </div>
                 </div>
             </div>
 
@@ -222,66 +187,67 @@
                 <!-- Populated by JS -->
             </div>
         </div>
+
+        <!-- View 4: Squadre (Dashboard) -->
+        <div id="viewSquadre" class="p-4 space-y-4 hidden">
+             <div class="flex justify-between items-center mb-1">
+                <h2 class="text-xl font-bold text-gray-900">Dashboard Squadre</h2>
+                <span class="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full" id="totalPlayersBadge">0 Giocatori</span>
+            </div>
+            <div id="teamsDashboardContainer" class="grid grid-cols-1 gap-4 pb-4">
+                <!-- Populated by JS -->
+            </div>
+        </div>
     </main>
 
-    <!-- Bottom Navigation PRO -->
-    <nav class="fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-slate-200 z-40 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
-        <div class="max-w-3xl mx-auto flex justify-between px-2 py-2">
-            <button onclick="switchTab('appello')" id="tabAppello" class="flex-1 flex flex-col items-center justify-center gap-1 nav-item nav-active focus:outline-none">
-                <div class="nav-pill flex flex-col items-center justify-center w-16 h-12">
-                    <i class="fa-solid fa-list-check text-xl mb-0.5"></i>
-                    <span class="text-[10px] uppercase tracking-wider">Appello</span>
-                </div>
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200 z-10 pb-safe">
+        <div class="max-w-3xl mx-auto flex px-2">
+            <button onclick="switchTab('appello')" id="tabAppello" class="flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none transition-colors">
+                <i class="fa-solid fa-list-check text-lg"></i>
+                <span class="text-[10px] uppercase tracking-wider">Appello</span>
             </button>
-            <button onclick="switchTab('storico')" id="tabStorico" class="flex-1 flex flex-col items-center justify-center gap-1 nav-item nav-inactive focus:outline-none">
-                <div class="nav-pill flex flex-col items-center justify-center w-16 h-12">
-                    <i class="fa-solid fa-chart-pie text-xl mb-0.5"></i>
-                    <span class="text-[10px] uppercase tracking-wider">Storico</span>
-                </div>
+            <button onclick="switchTab('storico')" id="tabStorico" class="flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none transition-colors">
+                <i class="fa-solid fa-chart-pie text-lg"></i>
+                <span class="text-[10px] uppercase tracking-wider">Storico</span>
             </button>
-            <button onclick="switchTab('squadre')" id="tabSquadre" class="flex-1 flex flex-col items-center justify-center gap-1 nav-item nav-inactive focus:outline-none">
-                <div class="nav-pill flex flex-col items-center justify-center w-16 h-12">
-                    <i class="fa-solid fa-layer-group text-xl mb-0.5"></i>
-                    <span class="text-[10px] uppercase tracking-wider">Squadre</span>
-                </div>
+            <button onclick="switchTab('giocatori')" id="tabGiocatori" class="flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none transition-colors relative">
+                <i class="fa-solid fa-users text-lg"></i>
+                <span class="text-[10px] uppercase tracking-wider">Giocatori</span>
+                <span id="navBadgeNew" class="hidden absolute top-1 right-1/4 bg-red-500 w-2.5 h-2.5 rounded-full border-2 border-white"></span>
             </button>
-            <button onclick="switchTab('giocatori')" id="tabGiocatori" class="flex-1 flex flex-col items-center justify-center gap-1 nav-item nav-inactive focus:outline-none">
-                <div class="nav-pill flex flex-col items-center justify-center w-16 h-12 relative">
-                    <i class="fa-solid fa-users text-xl mb-0.5"></i>
-                    <span class="text-[10px] uppercase tracking-wider">Roster</span>
-                    <span id="navBadgeNew" class="absolute top-1 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white hidden"></span>
-                </div>
+            <button onclick="switchTab('squadre')" id="tabSquadre" class="flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none transition-colors">
+                <i class="fa-solid fa-shield-halved text-lg"></i>
+                <span class="text-[10px] uppercase tracking-wider">Squadre</span>
             </button>
         </div>
     </nav>
 
-    <!-- Photo Modal PRO -->
-    <div id="photoModal" class="fixed inset-0 glass-modal z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col items-center relative" id="photoModalContent">
-            <button onclick="closePhotoModal()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition-colors">
-                <i class="fa-solid fa-xmark text-lg"></i>
+    <!-- Photo Modal -->
+    <div id="photoModal" class="fixed inset-0 modal-backdrop z-50 hidden flex items-center justify-center p-4 transition-opacity">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl transform transition-all flex flex-col items-center relative">
+            <button onclick="closePhotoModal()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-times"></i>
             </button>
             
-            <div class="mt-4 mb-2 text-center">
-                <h3 class="text-xl font-bold text-slate-800 mb-1" id="modalPlayerName">Nome</h3>
-                <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase" id="modalPlayerTeam">Squadra</span>
-            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-1 mt-2" id="modalPlayerName">Nome</h3>
+            <p class="text-sm font-semibold text-blue-600 mb-6 bg-blue-50 px-3 py-1 rounded-full" id="modalPlayerTeam">Squadra</p>
             
-            <div class="w-48 h-48 rounded-full border-4 border-slate-50 bg-slate-100 flex items-center justify-center overflow-hidden my-6 shadow-inner relative group">
+            <div class="w-32 h-32 rounded-full border-4 border-blue-50 bg-gray-50 flex items-center justify-center overflow-hidden mb-6 relative group shadow-inner">
                 <img id="modalPreviewImg" class="avatar-img hidden" src="" alt="Preview">
-                <i id="modalPreviewIcon" class="fa-solid fa-user-astronaut text-5xl text-slate-300"></i>
+                <i id="modalPreviewIcon" class="fa-solid fa-camera text-4xl text-gray-300"></i>
             </div>
             
             <div class="w-full space-y-3">
-                <label for="cameraInput" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-4 rounded-xl cursor-pointer transition-colors shadow-sm active:scale-95">
+                <label for="cameraInput" class="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white font-semibold py-3 px-4 rounded-xl cursor-pointer transition-transform active:scale-95 shadow-md">
                     <i class="fa-solid fa-camera"></i>
-                    Cambia Foto
+                    Scatta / Scegli Foto
                 </label>
                 <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
                 
-                <button id="removePhotoBtn" onclick="removePhoto()" class="w-full flex items-center justify-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 font-semibold py-3.5 px-4 rounded-xl transition-colors hidden active:scale-95">
+                <button id="removePhotoBtn" onclick="removePhoto()" class="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-3 px-4 rounded-xl transition-colors hidden">
                     <i class="fa-solid fa-trash-can"></i>
-                    Rimuovi Foto
+                    Rimuovi
                 </button>
             </div>
         </div>
@@ -290,13 +256,13 @@
     <!-- Hidden Canvas for Image Compression -->
     <canvas id="compressCanvas" class="hidden"></canvas>
 
-    <!-- Player Form Modal PRO -->
-    <div id="playerModal" class="fixed inset-0 glass-modal z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh] overflow-y-auto" id="playerModalContent">
+    <!-- Player Form Modal -->
+    <div id="playerModal" class="fixed inset-0 modal-backdrop z-50 hidden flex items-end sm:items-center justify-center sm:p-4 transition-opacity">
+        <div class="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 shadow-2xl transform transition-all flex flex-col max-h-[90vh] overflow-y-auto pb-safe">
             <div class="w-full flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold text-slate-800" id="playerModalTitle">Aggiungi Giocatore</h3>
-                <button onclick="closePlayerModal()" class="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition-colors">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+                <h3 class="text-xl font-bold text-gray-900" id="playerModalTitle">Aggiungi Giocatore</h3>
+                <button onclick="closePlayerModal()" class="w-8 h-8 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-times"></i>
                 </button>
             </div>
             
@@ -306,73 +272,70 @@
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nome *</label>
-                        <input type="text" id="playerName" required class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 text-slate-800">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Nome *</label>
+                        <input type="text" id="playerName" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Cognome *</label>
-                        <input type="text" id="playerSurname" required class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 text-slate-800">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Cognome *</label>
+                        <input type="text" id="playerSurname" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex justify-between">
-                        Squadra * <span class="text-[10px] text-blue-500 normal-case">(DA ASSEGNARE = In attesa)</span>
-                    </label>
-                    <input type="text" id="playerTeam" required list="teamOptions" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold" placeholder="Scrivi o seleziona...">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Squadra *</label>
+                    <input type="text" id="playerTeam" required list="teamOptions" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all uppercase" placeholder="Es. U14A">
                     <datalist id="teamOptions"></datalist>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Telefono / WhatsApp</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                            <i class="fa-solid fa-phone text-slate-400"></i>
-                        </div>
-                        <input type="tel" id="playerPhone" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 pl-11 focus:ring-2 focus:ring-blue-500 text-slate-800" placeholder="Es. 333 1234567">
-                    </div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Genitore / Tutore</label>
+                    <input type="text" id="playerGenitore" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all" placeholder="Nome del genitore">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Telefono</label>
+                    <input type="tel" id="playerPhone" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all" placeholder="Es. 333 1234567">
                 </div>
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Nascita</label>
-                        <input type="date" id="playerBirth" class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 text-slate-800 text-sm">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Data Nascita</label>
+                        <input type="date" id="playerBirth" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-sm">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Iscrizione</label>
-                        <input type="date" id="playerEntry" required class="w-full bg-slate-50 border-0 ring-1 ring-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 text-slate-800 text-sm">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Iscrizione</label>
+                        <input type="date" id="playerEntry" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-sm">
                     </div>
                 </div>
 
                 <div class="pt-6 flex gap-3">
-                    <button type="button" id="deletePlayerBtn" onclick="deletePlayer()" class="hidden w-14 bg-red-50 text-red-600 font-semibold py-3.5 rounded-xl hover:bg-red-100 transition-colors active:scale-95 flex items-center justify-center">
-                        <i class="fa-solid fa-trash-can text-lg"></i>
-                    </button>
-                    <button type="submit" class="flex-1 bg-slate-900 text-white font-semibold py-3.5 rounded-xl hover:bg-slate-800 transition-colors active:scale-95 shadow-md">
-                        <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Salva nel Cloud
+                    <button type="button" id="deletePlayerBtn" onclick="deletePlayer()" class="hidden w-14 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center"><i class="fa-solid fa-trash-can"></i></button>
+                    <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 transition-transform active:scale-95 shadow-md flex justify-center items-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Salva Giocatore
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- FIREBASE AND APP LOGIC -->
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-24 left-0 w-full flex flex-col items-center gap-2 z-50"></div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ==============================================================
-        // CONFIGURACIÓN FIREBASE (Mantén esto como estaba en tu versión funcional)
+        // TUS CREDENCIALES DE FIREBASE (NO TOCAR)
         const firebaseConfig = {
-            apiKey: "AIzaSyAEzLuN2TT77foODRGwAo3UY16VolP9nzY", 
-            authDomain: "gestione-presenze-b52c7.firebaseapp.com", 
+            apiKey: "AIzaSyAEzLuN2TT77foODRGwAo3UY16VolP9nzY",
+            authDomain: "gestione-presenze-b52c7.firebaseapp.com",
+            databaseURL: "https://gestione-presenze-b52c7-default-rtdb.firebaseio.com",
             projectId: "gestione-presenze-b52c7",
             storageBucket: "gestione-presenze-b52c7.firebasestorage.app",
             messagingSenderId: "8099106330",
             appId: "1:8099106330:web:a69dfd06a4662bd8474ba3"
         };
-        // ==============================================================
         
         // Init Firebase
         const app = initializeApp(firebaseConfig);
@@ -384,9 +347,6 @@
         let attendance = {}; 
         let currentEditingPlayerId = null;
 
-        const getPlayersPath = () => `players`; 
-        const getAttendancePath = () => `attendance`; 
-
         window.onload = async () => {
             initUI();
             setupEventListeners();
@@ -396,92 +356,85 @@
                 initCloudData();
             } catch (error) {
                 console.error("Auth Error:", error);
-                document.getElementById('syncText').textContent = "Errore di connessione cloud";
+                document.getElementById('syncText').textContent = "Errore di connessione";
                 document.getElementById('cloudSyncBanner').classList.replace('bg-blue-600', 'bg-red-500');
             }
         };
 
-        // --- TOAST NOTIFICATION SYSTEM PRO ---
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            
-            const isSuccess = type === 'success';
-            const icon = isSuccess ? '<i class="fa-solid fa-circle-check text-emerald-500 text-lg"></i>' : '<i class="fa-solid fa-circle-exclamation text-amber-500 text-lg"></i>';
-            const bgClass = 'bg-white text-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-100';
-            
-            toast.className = `toast ${bgClass} px-4 py-3 rounded-2xl flex items-center gap-3 font-medium text-sm`;
-            toast.innerHTML = `${icon} <span>${message}</span>`;
-            
-            container.appendChild(toast);
-            
-            // Trigger animation
-            setTimeout(() => toast.classList.add('show'), 10);
-            
-            // Remove after 3s
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 400);
-            }, 3000);
-        }
+        const getPlayersPath = () => `players`; 
+        const getAttendancePath = () => `attendance`; 
 
         function initCloudData() {
-            // Listen for Players
+            // Listen for Players Collection
             onSnapshot(collection(db, getPlayersPath()), async (snapshot) => {
                 players = [];
-                let newPlayersCount = 0;
-
+                let hasNew = false;
                 snapshot.forEach(doc => {
-                    const data = doc.data();
-                    players.push(data);
-                    if(data.isNew || data.team === 'DA ASSEGNARE') newPlayersCount++;
+                    const p = doc.data();
+                    players.push(p);
+                    if(p.isNew) hasNew = true;
                 });
-
-                // Update New Player Badge in Nav
-                const navBadge = document.getElementById('navBadgeNew');
-                if (newPlayersCount > 0) {
-                    navBadge.classList.remove('hidden');
-                } else {
-                    navBadge.classList.add('hidden');
-                }
+                
+                // Update new badge
+                const badge = document.getElementById('navBadgeNew');
+                if(hasNew) badge.classList.remove('hidden');
+                else badge.classList.add('hidden');
 
                 populateTeamSelectors();
                 renderViews();
                 hideSyncBanner();
-            }, (error) => {
-                console.error("Error listening to players: ", error);
             });
 
-            // Listen for Attendance
+            // Listen for Attendance Collection
             onSnapshot(collection(db, getAttendancePath()), async (snapshot) => {
-                 if (!snapshot.empty) {
-                     attendance = {};
-                     snapshot.forEach(doc => {
-                         attendance[doc.id] = doc.data().records || {};
-                     });
-                     renderViews();
-                 }
-            }, (error) => {
-                 console.error("Error listening to attendance: ", error);
+                attendance = {};
+                snapshot.forEach(doc => {
+                    attendance[doc.id] = doc.data().records || {};
+                });
+                renderViews();
             });
         }
 
         function hideSyncBanner() {
             const banner = document.getElementById('cloudSyncBanner');
-            banner.classList.replace('banner-visible', 'banner-hidden');
+            setTimeout(() => {
+                banner.classList.replace('banner-visible', 'banner-hidden');
+            }, 1000);
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let icon = type === 'success' ? '<i class="fa-solid fa-circle-check text-green-500"></i>' : '<i class="fa-solid fa-circle-exclamation text-red-500"></i>';
+            
+            toast.className = `bg-gray-900/95 backdrop-blur text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 toast pointer-events-auto`;
+            toast.innerHTML = `${icon} ${message}`;
+            
+            container.appendChild(toast);
+            
+            // Trigger animation
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
         function renderViews() {
             if (!document.getElementById('viewAppello').classList.contains('hidden')) renderAppelloList();
             if (!document.getElementById('viewStorico').classList.contains('hidden')) renderStorico();
             if (!document.getElementById('viewGiocatori').classList.contains('hidden')) renderGiocatori();
-            if (!document.getElementById('viewSquadre').classList.contains('hidden')) renderSquadre();
+            if (!document.getElementById('viewSquadre').classList.contains('hidden')) renderSquadreDashboard();
         }
 
         function initUI() {
             const today = new Date();
-            const options = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('currentDateDisplay').textContent = today.toLocaleDateString('it-IT', options);
+            const options = { weekday: 'short', day: 'numeric', month: 'short' };
+            document.getElementById('currentDateDisplay').textContent = today.toLocaleDateString('it-IT', options).toUpperCase();
 
             const isoDate = today.toISOString().split('T')[0];
             document.getElementById('attendanceDate').value = isoDate;
@@ -492,11 +445,11 @@
         }
 
         function populateTeamSelectors() {
-            // Include 'DA ASSEGNARE' at the top if it exists
-            let teams = [...new Set(players.map(p => p.team))].sort();
-            if (teams.includes('DA ASSEGNARE')) {
-                teams = ['DA ASSEGNARE', ...teams.filter(t => t !== 'DA ASSEGNARE')];
-            }
+            const teams = [...new Set(players.map(p => p.team))].sort((a,b) => {
+                if (a === "DA ASSEGNARE") return -1;
+                if (b === "DA ASSEGNARE") return 1;
+                return a.localeCompare(b);
+            });
             
             const teamSelect = document.getElementById('teamSelector');
             const historyTeamSelect = document.getElementById('historyTeamSelector');
@@ -509,26 +462,32 @@
 
             teamSelect.innerHTML = '<option value="">Seleziona...</option>';
             historyTeamSelect.innerHTML = '<option value="ALL">Tutte le squadre</option>';
-            if(rosterTeamSelect) rosterTeamSelect.innerHTML = '<option value="ALL">Tutte le squadre</option>';
+            if(rosterTeamSelect) rosterTeamSelect.innerHTML = '<option value="ALL">Tutte</option>';
             if(teamOptions) teamOptions.innerHTML = '';
             
             teams.forEach(team => {
-                const isDaAssegnare = team === 'DA ASSEGNARE';
-                const label = isDaAssegnare ? `⚠️ ${team}` : team;
-
+                if(team.trim() === "") return;
                 const opt = document.createElement('option');
-                opt.value = team; opt.textContent = label; teamSelect.appendChild(opt);
+                opt.value = team;
+                opt.textContent = team === "DA ASSEGNARE" ? "⚠️ Da Assegnare" : team;
+                teamSelect.appendChild(opt);
                 
                 const optHist = document.createElement('option');
-                optHist.value = team; optHist.textContent = label; historyTeamSelect.appendChild(optHist);
+                optHist.value = team;
+                optHist.textContent = team;
+                historyTeamSelect.appendChild(optHist);
 
                 if(rosterTeamSelect) {
                     const optRoster = document.createElement('option');
-                    optRoster.value = team; optRoster.textContent = label; rosterTeamSelect.appendChild(optRoster);
+                    optRoster.value = team;
+                    optRoster.textContent = team === "DA ASSEGNARE" ? "⚠️ Da Asseg..." : team;
+                    rosterTeamSelect.appendChild(optRoster);
                 }
 
-                if(teamOptions && !isDaAssegnare) {
-                    const dlOpt = document.createElement('option'); dlOpt.value = team; teamOptions.appendChild(dlOpt);
+                if(teamOptions && team !== "DA ASSEGNARE") {
+                    const dlOpt = document.createElement('option');
+                    dlOpt.value = team;
+                    teamOptions.appendChild(dlOpt);
                 }
             });
 
@@ -550,10 +509,11 @@
             document.getElementById('cameraInput').addEventListener('change', handlePhotoUpload);
         }
 
-        async function markAttendance(date, playerId, status) {
+        window.markAttendance = async function(date, playerId, status) {
+            // Optimistic Update
             if (!attendance[date]) attendance[date] = {};
             if (attendance[date][playerId] === status) {
-                delete attendance[date][playerId]; // Toggle off
+                delete attendance[date][playerId];
             } else {
                 attendance[date][playerId] = status;
             }
@@ -563,99 +523,93 @@
                 await setDoc(doc(db, getAttendancePath(), date), { records: attendance[date] });
             } catch(e) {
                 console.error("Cloud Error:", e);
-                showToast("Errore di rete", "error");
+                showToast("Errore di connessione", "error");
             }
         }
 
-        // --- NEW UX FEATURE: MARK ALL PRESENT ---
         window.markAllPresent = async function() {
             const team = document.getElementById('teamSelector').value;
             const date = document.getElementById('attendanceDate').value;
-            if (!team || !date) return;
+            if(!team || !date) return;
 
             const teamPlayers = players.filter(p => p.team === team);
             if (!attendance[date]) attendance[date] = {};
 
-            // Only mark those not explicitly marked absent
             teamPlayers.forEach(p => {
-                if (attendance[date][p.id] !== 'absent') {
-                    attendance[date][p.id] = 'present';
-                }
+                attendance[date][p.id] = 'present';
             });
-
             renderAppelloList();
-            showToast("Tutti segnati presenti!");
 
             try {
                 await setDoc(doc(db, getAttendancePath(), date), { records: attendance[date] });
+                showToast("Tutti segnati presenti!");
             } catch(e) {
                 console.error("Cloud Error:", e);
             }
-        };
+        }
 
         async function savePlayerToCloud(playerObj) {
             try {
+                // If it's saved, it's no longer 'new' unless explicitly kept
+                if(playerObj.team !== "DA ASSEGNARE") {
+                    playerObj.isNew = false;
+                }
                 await setDoc(doc(db, getPlayersPath(), playerObj.id), playerObj);
-                showToast("Giocatore salvato con successo");
                 closePlayerModal();
+                showToast("Giocatore salvato");
             } catch(e) {
                 console.error("Save Error:", e);
-                showToast("Errore durante il salvataggio", "error");
             }
         }
 
         async function deletePlayerFromCloud(playerId) {
-            try {
-                 await deleteDoc(doc(db, getPlayersPath(), playerId));
-                 showToast("Giocatore eliminato");
-                 closePlayerModal();
-            } catch(e) {
-                console.error("Delete Error:", e);
+            if(confirm("Sei sicuro di voler eliminare questo giocatore?")) {
+                try {
+                     await deleteDoc(doc(db, getPlayersPath(), playerId));
+                     closePlayerModal();
+                     showToast("Giocatore eliminato");
+                } catch(e) {
+                    console.error("Delete Error:", e);
+                }
             }
         }
 
         function getInitials(name, surname) {
-            return (name.charAt(0) + (surname ? surname.charAt(0) : '')).toUpperCase();
+            return ((name?.charAt(0) || '') + (surname?.charAt(0) || '')).toUpperCase();
         }
 
         function renderAppelloList() {
             const team = document.getElementById('teamSelector').value;
             const date = document.getElementById('attendanceDate').value;
             const container = document.getElementById('playersList');
-            const headerStats = document.getElementById('appelloHeaderStats');
-            const statsText = document.getElementById('attendanceStats');
+            const controls = document.getElementById('appelloControls');
             
             container.innerHTML = '';
 
             if (!team || !date) {
-                headerStats.style.display = 'none';
+                controls.classList.add('hidden');
                 container.innerHTML = `
-                    <div class="text-center text-slate-400 mt-12 py-10 bg-white rounded-3xl border border-dashed border-slate-200">
-                        <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
-                            <i class="fa-solid fa-users"></i>
-                        </div>
-                        <p class="font-medium text-slate-600">Seleziona una squadra</p>
-                        <p class="text-xs mt-1">per iniziare l'appello di oggi</p>
+                    <div class="text-center text-gray-400 mt-12 py-12 bg-white rounded-2xl border border-gray-100 border-dashed">
+                        <i class="fa-solid fa-users text-4xl mb-3 text-gray-200"></i>
+                        <p class="font-medium text-sm">Seleziona una squadra</p>
                     </div>`;
                 return;
             }
 
+            controls.classList.remove('hidden');
             const teamPlayers = players.filter(p => p.team === team);
             if (!attendance[date]) attendance[date] = {};
 
-            let presCount = 0;
-            let absCount = 0;
-
-            // Sort alphabetically
-            teamPlayers.sort((a, b) => a.surname.localeCompare(b.surname));
+            let pres = 0, abs = 0, none = 0;
 
             teamPlayers.forEach(player => {
                 const status = attendance[date][player.id] || 'none';
-                if (status === 'present') presCount++;
-                if (status === 'absent') absCount++;
+                if(status === 'present') pres++;
+                else if(status === 'absent') abs++;
+                else none++;
                 
                 const card = document.createElement('div');
-                card.className = 'bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 card-pro';
+                card.className = 'bg-white p-3 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex items-center gap-3 transition-colors';
                 
                 const avatarDiv = document.createElement('div');
                 avatarDiv.className = 'w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0 cursor-pointer shadow-inner';
@@ -669,20 +623,20 @@
 
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'flex-1';
-                infoDiv.innerHTML = `<p class="font-bold text-slate-700 leading-tight">${player.surname} ${player.name}</p>`;
+                infoDiv.innerHTML = `<p class="font-semibold text-gray-900 leading-tight">${player.surname} ${player.name}</p>`;
 
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'flex gap-2';
 
                 const btnPresent = document.createElement('button');
-                btnPresent.className = `w-12 h-12 rounded-xl border flex items-center justify-center status-btn ${status === 'present' ? 'status-present' : 'status-none hover:bg-slate-200'}`;
+                btnPresent.className = `w-12 h-12 rounded-full border-2 flex items-center justify-center status-btn ${status === 'present' ? 'status-present shadow-lg shadow-green-500/30' : 'status-none hover:bg-gray-200'}`;
                 btnPresent.innerHTML = '<i class="fa-solid fa-check text-lg"></i>';
-                btnPresent.onclick = () => markAttendance(date, player.id, 'present');
+                btnPresent.onclick = () => window.markAttendance(date, player.id, 'present');
 
                 const btnAbsent = document.createElement('button');
-                btnAbsent.className = `w-12 h-12 rounded-xl border flex items-center justify-center status-btn ${status === 'absent' ? 'status-absent' : 'status-none hover:bg-slate-200'}`;
+                btnAbsent.className = `w-12 h-12 rounded-full border-2 flex items-center justify-center status-btn ${status === 'absent' ? 'status-absent shadow-lg shadow-red-500/30' : 'status-none hover:bg-gray-200'}`;
                 btnAbsent.innerHTML = '<i class="fa-solid fa-xmark text-lg"></i>';
-                btnAbsent.onclick = () => markAttendance(date, player.id, 'absent');
+                btnAbsent.onclick = () => window.markAttendance(date, player.id, 'absent');
 
                 actionsDiv.appendChild(btnPresent);
                 actionsDiv.appendChild(btnAbsent);
@@ -692,13 +646,9 @@
                 container.appendChild(card);
             });
 
-            if (teamPlayers.length > 0) {
-                headerStats.style.display = 'flex';
-                statsText.innerHTML = `<span class="text-emerald-600 font-bold">${presCount} Presenti</span> <span class="mx-1">•</span> <span class="text-red-500 font-bold">${absCount} Assenti</span>`;
-            } else {
-                headerStats.style.display = 'none';
-                container.innerHTML = `<div class="text-center py-10 text-slate-500 font-medium bg-white rounded-3xl">Nessun giocatore in questa squadra</div>`;
-            }
+            document.getElementById('countPresent').innerText = pres;
+            document.getElementById('countAbsent').innerText = abs;
+            document.getElementById('countNone').innerText = none;
         }
 
         function renderStorico() {
@@ -714,8 +664,6 @@
                 ? players 
                 : players.filter(p => p.team === teamFilter);
 
-            targetPlayers.sort((a, b) => a.surname.localeCompare(b.surname));
-
             targetPlayers.forEach(player => {
                 let presences = 0;
                 let absences = 0;
@@ -729,80 +677,21 @@
                 });
 
                 const tr = document.createElement('tr');
-                tr.className = 'bg-white hover:bg-slate-50 transition-colors';
+                tr.className = 'bg-white border-b border-gray-50 last:border-0 hover:bg-blue-50/50 transition-colors';
                 tr.innerHTML = `
-                    <th scope="row" class="px-5 py-4 font-semibold text-slate-800 whitespace-nowrap">
+                    <th scope="row" class="px-4 py-4 font-semibold text-gray-900 whitespace-nowrap">
                         ${player.surname} ${player.name}
-                        ${teamFilter === 'ALL' ? `<br><span class="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full mt-1 inline-block">${player.team}</span>` : ''}
+                        ${teamFilter === 'ALL' ? `<br><span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">${player.team}</span>` : ''}
                     </th>
-                    <td class="px-5 py-4 text-center text-emerald-600 font-bold bg-emerald-50/50">${presences}</td>
-                    <td class="px-5 py-4 text-center text-red-500 font-bold bg-red-50/50">${absences}</td>
+                    <td class="px-4 py-4 text-center text-green-600 font-bold bg-green-50/30">${presences}</td>
+                    <td class="px-4 py-4 text-center text-red-500 font-bold bg-red-50/30">${absences}</td>
                 `;
                 tbody.appendChild(tr);
             });
             
             if (targetPlayers.length === 0) {
-                 tbody.innerHTML = `<tr><td colspan="3" class="px-5 py-10 text-center text-slate-400 font-medium">Nessun dato trovato</td></tr>`;
+                 tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-12 text-center text-gray-400 font-medium border-dashed border-t border-gray-200">Nessun giocatore trovato</td></tr>`;
             }
-        }
-
-        // --- DASHBOARD SQUADRE ---
-        function renderSquadre() {
-            const container = document.getElementById('squadreList');
-            document.getElementById('totalPlayersBadge').textContent = `${players.length} Totali`;
-            container.innerHTML = '';
-            
-            let teams = [...new Set(players.map(p => p.team))].sort();
-            if (teams.includes('DA ASSEGNARE')) {
-                teams = ['DA ASSEGNARE', ...teams.filter(t => t !== 'DA ASSEGNARE')];
-            }
-
-            teams.forEach(team => {
-                const teamPlayers = players.filter(p => p.team === team);
-                const isDaAssegnare = team === 'DA ASSEGNARE';
-                
-                const card = document.createElement('div');
-                card.className = `bg-white p-5 rounded-3xl shadow-sm border ${isDaAssegnare ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'} hover:shadow-md transition-all cursor-pointer`;
-                card.onclick = () => {
-                    document.getElementById('rosterTeamSelector').value = team;
-                    switchTab('giocatori');
-                };
-                
-                // Header (Name + Count)
-                const header = document.createElement('div');
-                header.className = 'flex justify-between items-center mb-5';
-                header.innerHTML = `
-                    <h3 class="text-lg font-bold ${isDaAssegnare ? 'text-amber-600' : 'text-slate-800'}">${isDaAssegnare ? '⚠️ DA ASSEGNARE' : team}</h3>
-                    <span class="${isDaAssegnare ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'} text-xs font-bold px-3 py-1 rounded-full">${teamPlayers.length}</span>
-                `;
-                
-                // Mini Avatars grid 
-                const avatarsContainer = document.createElement('div');
-                avatarsContainer.className = 'avatar-group pl-3';
-                
-                const displayPlayers = teamPlayers.slice(0, 7);
-                displayPlayers.forEach(p => {
-                    const avi = document.createElement('div');
-                    avi.className = 'avatar-mini';
-                    if (p.photo) {
-                        avi.innerHTML = `<img src="${p.photo}" alt="${p.name}">`;
-                    } else {
-                        avi.textContent = getInitials(p.name, p.surname);
-                    }
-                    avatarsContainer.appendChild(avi);
-                });
-
-                if (teamPlayers.length > 7) {
-                    const moreAvi = document.createElement('div');
-                    moreAvi.className = 'avatar-mini bg-slate-200 text-slate-600 border-white';
-                    moreAvi.textContent = `+${teamPlayers.length - 7}`;
-                    avatarsContainer.appendChild(moreAvi);
-                }
-
-                card.appendChild(header);
-                card.appendChild(avatarsContainer);
-                container.appendChild(card);
-            });
         }
 
         function renderGiocatori() {
@@ -817,27 +706,29 @@
 
             if (searchQuery) {
                 targetPlayers = targetPlayers.filter(p => 
-                    p.name.toLowerCase().includes(searchQuery) || 
-                    p.surname.toLowerCase().includes(searchQuery) ||
-                    p.team.toLowerCase().includes(searchQuery)
+                    (p.name && p.name.toLowerCase().includes(searchQuery)) || 
+                    (p.surname && p.surname.toLowerCase().includes(searchQuery))
                 );
             }
 
-            // Put "DA ASSEGNARE" / "NUOVO" at top, then alphabetical
+            // Bring 'Da Assegnare' and 'New' to top
             targetPlayers.sort((a, b) => {
-                if (a.isNew || a.team === 'DA ASSEGNARE') return -1;
-                if (b.isNew || b.team === 'DA ASSEGNARE') return 1;
-                return a.surname.localeCompare(b.surname);
+                if (a.isNew && !b.isNew) return -1;
+                if (!a.isNew && b.isNew) return 1;
+                if (a.team === "DA ASSEGNARE" && b.team !== "DA ASSEGNARE") return -1;
+                if (a.team !== "DA ASSEGNARE" && b.team === "DA ASSEGNARE") return 1;
+                return (a.surname||"").localeCompare(b.surname||"");
             });
 
             targetPlayers.forEach(player => {
                 const card = document.createElement('div');
-                const isAttention = player.isNew || player.team === 'DA ASSEGNARE';
-                card.className = `bg-white p-3 rounded-2xl shadow-sm border ${isAttention ? 'border-amber-300 bg-amber-50/20' : 'border-slate-100'} flex items-center gap-3 cursor-pointer card-pro`;
+                const isDaAssegnare = player.team === "DA ASSEGNARE";
+                
+                card.className = `bg-white p-3 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border ${isDaAssegnare ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-100'} flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors relative overflow-hidden`;
                 card.onclick = () => window.openPlayerModal(player.id);
                 
                 const avatarDiv = document.createElement('div');
-                avatarDiv.className = 'w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0 shadow-inner';
+                avatarDiv.className = 'w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0 shadow-inner z-10';
                 if (player.photo) {
                     avatarDiv.innerHTML = `<img src="${player.photo}" class="avatar-img" alt="${player.name}">`;
                 } else {
@@ -845,29 +736,36 @@
                 }
 
                 const infoDiv = document.createElement('div');
-                infoDiv.className = 'flex-1';
+                infoDiv.className = 'flex-1 z-10';
                 
-                // Badge NUOVO animato
-                const newBadge = isAttention ? `<span class="badge-new bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full ml-2 shadow-sm uppercase tracking-wider">Nuovo</span>` : '';
+                let entryDateStr = '';
+                if(player.dataIscrizione) {
+                    const d = new Date(player.dataIscrizione);
+                    if(!isNaN(d)) entryDateStr = ` • ${d.toLocaleDateString('it-IT').slice(0,5)}`;
+                }
 
                 infoDiv.innerHTML = `
-                    <p class="font-bold text-slate-800 leading-tight flex items-center">${player.surname} ${player.name} ${newBadge}</p>
-                    <p class="text-[11px] font-semibold ${isAttention ? 'text-amber-600' : 'text-slate-400'} mt-1 uppercase tracking-wider">${player.team}</p>
+                    <div class="flex items-center gap-2">
+                        <p class="font-bold text-gray-900 leading-tight">${player.surname} ${player.name}</p>
+                        ${player.isNew ? '<span class="bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded badge-new">NUOVO</span>' : ''}
+                    </div>
+                    <p class="text-xs font-semibold ${isDaAssegnare ? 'text-yellow-600' : 'text-blue-600'} mt-0.5">${player.team}${entryDateStr}</p>
+                    ${player.genitore ? `<p class="text-[11px] text-gray-500 mt-0.5 font-medium"><i class="fa-solid fa-user-tie text-gray-400"></i> ${player.genitore}</p>` : ''}
                 `;
 
                 const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'flex gap-2';
+                actionsDiv.className = 'flex gap-2 z-10';
 
                 if (player.telefono) {
                     let waPhone = player.telefono.replace(/\s+/g, '');
                     if (!waPhone.startsWith('+')) waPhone = '+39' + waPhone;
 
                     actionsDiv.innerHTML = `
-                        <a href="tel:${player.telefono}" onclick="event.stopPropagation()" class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors"><i class="fa-solid fa-phone"></i></a>
-                        <a href="https://wa.me/${waPhone}" target="_blank" onclick="event.stopPropagation()" class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-100 transition-colors"><i class="fa-brands fa-whatsapp text-lg"></i></a>
+                        <a href="tel:${player.telefono}" onclick="event.stopPropagation()" class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 shadow-sm transition-transform active:scale-95"><i class="fa-solid fa-phone"></i></a>
+                        <a href="https://wa.me/${waPhone}" target="_blank" onclick="event.stopPropagation()" class="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 shadow-sm transition-transform active:scale-95"><i class="fa-brands fa-whatsapp text-lg"></i></a>
                     `;
                 } else {
-                    actionsDiv.innerHTML = `<div class="w-10 h-10 flex items-center justify-center text-slate-300"><i class="fa-solid fa-chevron-right"></i></div>`;
+                    actionsDiv.innerHTML = `<div class="w-10 h-10 flex items-center justify-center text-gray-300"><i class="fa-solid fa-chevron-right"></i></div>`;
                 }
 
                 card.appendChild(avatarDiv);
@@ -877,57 +775,93 @@
             });
 
             if (targetPlayers.length === 0) {
-                 container.innerHTML = `
-                    <div class="text-center py-12 text-slate-400 bg-white rounded-3xl border border-dashed border-slate-200 mt-4">
-                        <i class="fa-solid fa-ghost text-4xl mb-3 text-slate-300"></i>
-                        <p class="font-medium">Nessun giocatore trovato</p>
-                    </div>`;
+                 container.innerHTML = `<div class="text-center py-12 text-gray-400 font-medium">Nessun giocatore trovato</div>`;
             }
         }
 
+        function renderSquadreDashboard() {
+            const container = document.getElementById('teamsDashboardContainer');
+            container.innerHTML = '';
+            document.getElementById('totalPlayersBadge').innerText = `${players.length} Giocatori`;
+
+            const teamsMap = {};
+            players.forEach(p => {
+                if(!teamsMap[p.team]) teamsMap[p.team] = [];
+                teamsMap[p.team].push(p);
+            });
+
+            const sortedTeams = Object.keys(teamsMap).sort((a,b) => {
+                if (a === "DA ASSEGNARE") return -1;
+                if (b === "DA ASSEGNARE") return 1;
+                return a.localeCompare(b);
+            });
+
+            sortedTeams.forEach(teamName => {
+                const teamRoster = teamsMap[teamName];
+                const isDaAssegnare = teamName === "DA ASSEGNARE";
+                
+                const card = document.createElement('div');
+                card.className = `bg-white p-4 rounded-3xl shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] border ${isDaAssegnare ? 'border-yellow-300' : 'border-gray-100'}`;
+                
+                let avatarsHtml = '';
+                const maxDisplay = 8;
+                
+                teamRoster.slice(0, maxDisplay).forEach((p, idx) => {
+                    if(p.photo) {
+                        avatarsHtml += `<div class="w-10 h-10 rounded-full bg-gray-100 border-2 border-white shadow-sm overflow-hidden z-[${maxDisplay-idx}] -ml-3 first:ml-0"><img src="${p.photo}" class="avatar-img"></div>`;
+                    } else {
+                        avatarsHtml += `<div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 border-2 border-white shadow-sm flex items-center justify-center text-xs font-bold z-[${maxDisplay-idx}] -ml-3 first:ml-0">${getInitials(p.name, p.surname)}</div>`;
+                    }
+                });
+
+                if(teamRoster.length > maxDisplay) {
+                    avatarsHtml += `<div class="w-10 h-10 rounded-full bg-gray-50 text-gray-500 border-2 border-white shadow-sm flex items-center justify-center text-xs font-bold z-0 -ml-3">+${teamRoster.length - maxDisplay}</div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-gray-900 ${isDaAssegnare ? 'text-yellow-600' : ''}">${isDaAssegnare ? '⚠️ DA ASSEGNARE' : teamName}</h3>
+                        <span class="bg-gray-100 text-gray-600 text-xs font-bold px-2.5 py-1 rounded-full">${teamRoster.length}</span>
+                    </div>
+                    <div class="flex items-center pt-2">
+                        ${avatarsHtml}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
         window.switchTab = function(tab) {
-            const views = ['viewAppello', 'viewStorico', 'viewSquadre', 'viewGiocatori'];
-            const tabs = ['tabAppello', 'tabStorico', 'tabSquadre', 'tabGiocatori'];
+            const views = ['viewAppello', 'viewStorico', 'viewGiocatori', 'viewSquadre'];
+            const tabs = ['tabAppello', 'tabStorico', 'tabGiocatori', 'tabSquadre'];
 
             views.forEach(v => document.getElementById(v).classList.add('hidden'));
             
-            tabs.forEach(t => {
-                document.getElementById(t).classList.remove('nav-active');
-                document.getElementById(t).classList.add('nav-inactive');
-            });
+            const inactiveClass = 'flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none transition-colors relative';
+            const activeClass = 'flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none transition-colors relative';
+            
+            tabs.forEach(t => document.getElementById(t).className = inactiveClass);
 
-            document.getElementById('view' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('hidden');
-            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('nav-inactive');
-            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('nav-active');
-
-            if (tab === 'storico') renderStorico();
-            else if (tab === 'giocatori') renderGiocatori();
-            else if (tab === 'squadre') renderSquadre();
+            if (tab === 'appello') {
+                document.getElementById('viewAppello').classList.remove('hidden');
+                document.getElementById('tabAppello').className = activeClass;
+            } else if (tab === 'storico') {
+                document.getElementById('viewStorico').classList.remove('hidden');
+                document.getElementById('tabStorico').className = activeClass;
+                renderStorico();
+            } else if (tab === 'giocatori') {
+                document.getElementById('viewGiocatori').classList.remove('hidden');
+                document.getElementById('tabGiocatori').className = activeClass;
+                renderGiocatori();
+            } else if (tab === 'squadre') {
+                document.getElementById('viewSquadre').classList.remove('hidden');
+                document.getElementById('tabSquadre').className = activeClass;
+                renderSquadreDashboard();
+            }
         };
 
-        // --- ANIMATED MODALS ---
-        function openModalAnim(modalId, contentId) {
-            const modal = document.getElementById(modalId);
-            const content = document.getElementById(contentId);
-            modal.classList.remove('hidden');
-            // Small delay to allow display:block to apply before animation
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                content.classList.remove('scale-95');
-                content.classList.add('scale-100');
-            }, 10);
-        }
-
-        function closeModalAnim(modalId, contentId) {
-            const modal = document.getElementById(modalId);
-            const content = document.getElementById(contentId);
-            modal.classList.add('opacity-0');
-            content.classList.remove('scale-100');
-            content.classList.add('scale-95');
-            setTimeout(() => modal.classList.add('hidden'), 300);
-        }
-
         window.openPlayerModal = function(playerId = null) {
+            const modal = document.getElementById('playerModal');
             const title = document.getElementById('playerModalTitle');
             const form = document.getElementById('playerForm');
             const deleteBtn = document.getElementById('deletePlayerBtn');
@@ -940,59 +874,74 @@
                 
                 title.textContent = 'Modifica Giocatore';
                 document.getElementById('editPlayerId').value = player.id;
-                document.getElementById('editPlayerIsNew').value = player.isNew ? "true" : "";
-                
-                document.getElementById('playerName').value = player.name;
-                document.getElementById('playerSurname').value = player.surname;
-                document.getElementById('playerTeam').value = player.team;
+                document.getElementById('editPlayerIsNew').value = player.isNew ? 'true' : 'false';
+                document.getElementById('playerName').value = player.name || '';
+                document.getElementById('playerSurname').value = player.surname || '';
+                document.getElementById('playerTeam').value = player.team || '';
+                document.getElementById('playerGenitore').value = player.genitore || '';
                 document.getElementById('playerPhone').value = player.telefono || '';
                 document.getElementById('playerBirth').value = player.dataNascita || '';
                 document.getElementById('playerEntry').value = player.dataIscrizione || '';
                 
                 deleteBtn.classList.remove('hidden');
             } else {
-                title.textContent = 'Nuovo Giocatore';
+                title.textContent = 'Aggiungi Giocatore';
                 document.getElementById('editPlayerId').value = '';
-                document.getElementById('editPlayerIsNew').value = '';
+                document.getElementById('editPlayerIsNew').value = 'false';
                 document.getElementById('playerEntry').value = new Date().toISOString().split('T')[0]; 
                 deleteBtn.classList.add('hidden');
             }
 
-            openModalAnim('playerModal', 'playerModalContent');
+            modal.classList.remove('hidden');
+            // Animate in
+            setTimeout(() => { modal.firstElementChild.style.transform = 'translateY(0)'; }, 10);
         };
 
         window.closePlayerModal = function() {
-            closeModalAnim('playerModal', 'playerModalContent');
+            document.getElementById('playerModal').classList.add('hidden');
         };
 
         window.savePlayer = function(e) {
             e.preventDefault();
             
             const id = document.getElementById('editPlayerId').value;
-            const wasNew = document.getElementById('editPlayerIsNew').value === "true";
-            
+            const isNewStr = document.getElementById('editPlayerIsNew').value;
             const name = document.getElementById('playerName').value.trim();
             const surname = document.getElementById('playerSurname').value.trim();
-            const teamInput = document.getElementById('playerTeam').value.trim().toUpperCase();
+            const team = document.getElementById('playerTeam').value.trim().toUpperCase();
+            const genitore = document.getElementById('playerGenitore').value.trim();
             const phone = document.getElementById('playerPhone').value.trim();
             const birth = document.getElementById('playerBirth').value;
             const entry = document.getElementById('playerEntry').value;
 
-            if(!name || !surname || !teamInput) return;
+            if(!name || !surname || !team) return;
 
             let playerObj;
             if (id) {
                 const existing = players.find(p => p.id === id);
-                playerObj = { ...existing, name, surname, team: teamInput, telefono: phone, dataNascita: birth, dataIscrizione: entry };
-                
-                // Si el jugador era "nuevo" o "da assegnare" y lo pusimos en un equipo real, le quitamos la etiqueta
-                if (wasNew && teamInput !== 'DA ASSEGNARE') {
-                    playerObj.isNew = false;
-                }
+                playerObj = {
+                    ...existing,
+                    name: name,
+                    surname: surname,
+                    team: team,
+                    genitore: genitore,
+                    telefono: phone,
+                    dataNascita: birth,
+                    dataIscrizione: entry,
+                    isNew: isNewStr === 'true'
+                };
             } else {
                 playerObj = {
                     id: 'p' + Date.now(),
-                    name, surname, team: teamInput, telefono: phone, dataNascita: birth, dataIscrizione: entry, photo: null
+                    name: name,
+                    surname: surname,
+                    team: team,
+                    genitore: genitore,
+                    telefono: phone,
+                    dataNascita: birth,
+                    dataIscrizione: entry,
+                    photo: null,
+                    isNew: false
                 };
             }
             savePlayerToCloud(playerObj);
@@ -1001,9 +950,7 @@
         window.deletePlayer = function() {
             const id = document.getElementById('editPlayerId').value;
             if(!id) return;
-            if(confirm("Sei sicuro di voler eliminare questo giocatore?")) {
-                deletePlayerFromCloud(id);
-            }
+            deletePlayerFromCloud(id);
         };
 
         window.openPhotoModal = function(playerId) {
@@ -1030,12 +977,12 @@
                 removeBtn.classList.add('hidden');
             }
 
-            openModalAnim('photoModal', 'photoModalContent');
+            document.getElementById('photoModal').classList.remove('hidden');
         };
 
         window.closePhotoModal = function() {
-            closeModalAnim('photoModal', 'photoModalContent');
-            setTimeout(() => currentEditingPlayerId = null, 300);
+            document.getElementById('photoModal').classList.add('hidden');
+            currentEditingPlayerId = null;
         };
 
         window.removePhoto = function() {
@@ -1052,9 +999,7 @@
             const file = event.target.files[0];
             if (!file || !currentEditingPlayerId) return;
 
-            document.getElementById('modalPreviewIcon').className = "fa-solid fa-spinner fa-spin text-5xl text-blue-500";
-            document.getElementById('modalPreviewIcon').classList.remove('hidden');
-            document.getElementById('modalPreviewImg').classList.add('hidden');
+            document.getElementById('modalPreviewIcon').className = "fa-solid fa-spinner fa-spin text-4xl text-blue-500";
             
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -1063,8 +1008,8 @@
                     const canvas = document.getElementById('compressCanvas');
                     const ctx = canvas.getContext('2d');
                     
-                    const MAX_WIDTH = 150; 
-                    const MAX_HEIGHT = 150;
+                    const MAX_WIDTH = 200; 
+                    const MAX_HEIGHT = 200;
                     let width = img.width;
                     let height = img.height;
 
@@ -1101,7 +1046,7 @@
             const tbody = document.getElementById('historyTableBody');
             const rows = tbody.querySelectorAll('tr');
             
-            if (rows.length === 0 || (rows.length === 1 && rows[0].innerText.includes('Nessun dato'))) {
+            if (rows.length === 0 || (rows.length === 1 && rows[0].innerText.includes('Nessun giocatore'))) {
                 showToast("Nessun dato da esportare", "error");
                 return;
             }
@@ -1113,7 +1058,7 @@
                 if(cols.length === 3) {
                     let nameCell = cols[0].innerHTML.replace(/<br>/g, '|').replace(/<[^>]+>/g, '').trim();
                     let name = nameCell.split('|')[0].trim();
-                    let playerTeam = nameCell.split('|')[1] ? nameCell.split('|')[1].replace(/<[^>]+>/g, '').trim() : team;
+                    let playerTeam = nameCell.split('|')[1] ? nameCell.split('|')[1].trim() : team;
                     
                     let presenze = cols[1].innerText.trim();
                     let assenze = cols[2].innerText.trim();
@@ -1130,7 +1075,7 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            showToast("Download avviato!");
+            showToast("Esportazione completata");
         };
     </script>
 </body>
