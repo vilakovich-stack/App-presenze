@@ -1,0 +1,1034 @@
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestione Presenze Giocatori</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: 600; }
+        .tab-inactive { color: #6b7280; font-weight: 400; }
+        .avatar-img { object-fit: cover; width: 100%; height: 100%; border-radius: 50%; }
+        
+        /* Toggle Switch Styles */
+        .status-btn { transition: all 0.2s ease-in-out; }
+        .status-present { background-color: #10b981; color: white; border-color: #10b981; }
+        .status-absent { background-color: #ef4444; color: white; border-color: #ef4444; }
+        .status-none { background-color: #e5e7eb; color: #6b7280; border-color: #d1d5db; }
+        
+        /* Hide scrollbar for clean mobile look */
+        ::-webkit-scrollbar { display: none; }
+
+        /* Cloud Sync Banner */
+        #cloudSyncBanner { transition: top 0.3s ease-in-out; }
+        .banner-visible { top: 0; }
+        .banner-hidden { top: -50px; }
+    </style>
+</head>
+<body class="text-gray-800 flex flex-col h-screen overflow-hidden relative">
+
+    <!-- Cloud Sync Status Banner -->
+    <div id="cloudSyncBanner" class="fixed left-0 w-full bg-yellow-500 text-white text-xs font-bold text-center py-1 z-50 banner-visible shadow-md flex justify-center items-center gap-2">
+        <i class="fa-solid fa-cloud-arrow-up animate-bounce"></i> <span id="syncText">Sincronizzazione in corso...</span>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white shadow-md z-10 p-4 pt-8">
+        <div class="max-w-3xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <i class="fa-solid fa-clipboard-user"></i> Presenze 26/27
+            </h1>
+            <div id="currentDateDisplay" class="text-sm font-medium opacity-90"></div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto pb-20 w-full max-w-3xl mx-auto" id="mainContainer">
+        
+        <!-- View 1: Appello (Roll Call) -->
+        <div id="viewAppello" class="p-4 space-y-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Seleziona Squadra</label>
+                <select id="teamSelector" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
+                    <option value="">Caricamento...</option>
+                </select>
+            </div>
+            
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <label class="block text-sm font-semibold text-gray-600">Data Appello</label>
+                <input type="date" id="attendanceDate" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2">
+            </div>
+
+            <!-- Players List -->
+            <div id="playersList" class="space-y-3 mt-4">
+                <div class="text-center text-gray-500 mt-10 py-10">
+                    <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-3 text-gray-300"></i>
+                    <p>Connessione al Cloud in corso...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 2: Storico (History) -->
+        <div id="viewStorico" class="p-4 space-y-4 hidden">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Mese</label>
+                    <select id="monthSelector" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2">
+                        <option value="01">Gennaio</option>
+                        <option value="02">Febbraio</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Aprile</option>
+                        <option value="05">Maggio</option>
+                        <option value="06">Giugno</option>
+                        <option value="07">Luglio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Settembre</option>
+                        <option value="10">Ottobre</option>
+                        <option value="11">Novembre</option>
+                        <option value="12">Dicembre</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Anno</label>
+                    <select id="yearSelector" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2">
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                    </select>
+                </div>
+                <div class="col-span-2">
+                     <label class="block text-sm font-semibold text-gray-600 mb-1">Filtra per Squadra</label>
+                     <div class="flex gap-2">
+                         <select id="historyTeamSelector" class="flex-1 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg p-2">
+                            <option value="ALL">Tutte le squadre</option>
+                         </select>
+                         <button onclick="exportToCSV()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm">
+                             <i class="fa-solid fa-file-csv"></i> Esporta
+                         </button>
+                     </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b">
+                            <tr>
+                                <th scope="col" class="px-4 py-3">Giocatore</th>
+                                <th scope="col" class="px-4 py-3 text-center text-green-600"><i class="fa-solid fa-check"></i> Presenze</th>
+                                <th scope="col" class="px-4 py-3 text-center text-red-600"><i class="fa-solid fa-xmark"></i> Assenze</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 3: Giocatori (Roster / Add new) -->
+        <div id="viewGiocatori" class="p-4 space-y-4 hidden">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-lg font-bold text-gray-800">Anagrafica Giocatori</h2>
+                <button onclick="openPlayerModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-xl shadow-sm transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Nuovo
+                </button>
+            </div>
+            
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Filtra per Squadra</label>
+                    <select id="rosterTeamSelector" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5">
+                        <option value="ALL">Tutte le squadre</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Cerca Giocatore</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fa-solid fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="playerSearchInput" class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-base rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5" placeholder="Nome o cognome...">
+                    </div>
+                </div>
+            </div>
+
+            <div id="rosterList" class="space-y-3 mt-4 pb-4">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 w-full bg-white border-t border-gray-200 z-10 pb-safe">
+        <div class="max-w-3xl mx-auto flex">
+            <button onclick="switchTab('appello')" id="tabAppello" class="flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none">
+                <i class="fa-solid fa-list-check text-xl"></i>
+                <span class="text-xs">Appello</span>
+            </button>
+            <button onclick="switchTab('storico')" id="tabStorico" class="flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none">
+                <i class="fa-solid fa-chart-pie text-xl"></i>
+                <span class="text-xs">Storico</span>
+            </button>
+            <button onclick="switchTab('giocatori')" id="tabGiocatori" class="flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none">
+                <i class="fa-solid fa-users text-xl"></i>
+                <span class="text-xs">Giocatori</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Photo Modal -->
+    <div id="photoModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl transform transition-all flex flex-col items-center">
+            <div class="w-full flex justify-end">
+                <button onclick="closePhotoModal()" class="text-gray-400 hover:text-gray-700">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <h3 class="text-lg font-bold text-gray-900 mb-1" id="modalPlayerName">Nome Giocatore</h3>
+            <p class="text-sm text-gray-500 mb-6" id="modalPlayerTeam">Squadra</p>
+            
+            <div class="w-40 h-40 rounded-full border-4 border-blue-100 bg-gray-100 flex items-center justify-center overflow-hidden mb-6 relative group">
+                <img id="modalPreviewImg" class="avatar-img hidden" src="" alt="Preview">
+                <i id="modalPreviewIcon" class="fa-solid fa-camera text-4xl text-gray-400"></i>
+            </div>
+            
+            <div class="w-full space-y-3">
+                <label for="cameraInput" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl cursor-pointer transition-colors">
+                    <i class="fa-solid fa-camera"></i>
+                    Scatta / Scegli Foto
+                </label>
+                <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+                
+                <button id="removePhotoBtn" onclick="removePhoto()" class="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-red-600 font-semibold py-3 px-4 rounded-xl transition-colors hidden">
+                    <i class="fa-solid fa-trash-can"></i>
+                    Rimuovi Foto
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Canvas for Image Compression -->
+    <canvas id="compressCanvas" class="hidden"></canvas>
+
+    <!-- Player Form Modal -->
+    <div id="playerModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl transform transition-all flex flex-col max-h-[90vh] overflow-y-auto">
+            <div class="w-full flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-900" id="playerModalTitle">Aggiungi Giocatore</h3>
+                <button onclick="closePlayerModal()" class="text-gray-400 hover:text-gray-700">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="playerForm" class="space-y-4" onsubmit="savePlayer(event)">
+                <input type="hidden" id="editPlayerId">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">Nome *</label>
+                        <input type="text" id="playerName" required class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">Cognome *</label>
+                        <input type="text" id="playerSurname" required class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Squadra *</label>
+                    <input type="text" id="playerTeam" required list="teamOptions" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Seleziona o scrivi...">
+                    <datalist id="teamOptions"></datalist>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Telefono (Contatto)</label>
+                    <input type="tel" id="playerPhone" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Es. 333 1234567">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">Data Nascita</label>
+                        <input type="date" id="playerBirth" class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-600 mb-1">Data Iscrizione</label>
+                        <input type="date" id="playerEntry" required class="w-full bg-gray-50 border border-gray-300 rounded-lg p-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="pt-4 flex gap-3">
+                    <button type="button" id="deletePlayerBtn" onclick="deletePlayer()" class="hidden flex-1 bg-red-100 text-red-600 font-semibold py-3 rounded-xl hover:bg-red-200 transition-colors">Elimina</button>
+                    <button type="submit" class="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors">Salva nel Cloud</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // === CONFIGURACIÓN PARA TU PROPIA APP (FUERA DE ESTE CHAT) ===
+        // PASO 3: Cuando crees tu proyecto en Firebase, reemplaza estos valores con los tuyos
+        const myFirebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "tu-proyecto.firebaseapp.com",
+            projectId: "tu-proyecto",
+            storageBucket: "tu-proyecto.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef"
+        };
+        // ==============================================================
+
+        // Detectar si estamos en el entorno de prueba del chat o en tu propia web
+        const isCanvasEnv = typeof __firebase_config !== 'undefined';
+        
+        // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAEzLuN2TT77foODRGwAo3UY16VolP9nzY",
+  authDomain: "gestione-presenze-b52c7.firebaseapp.com",
+  databaseURL: "https://gestione-presenze-b52c7-default-rtdb.firebaseio.com",
+  projectId: "gestione-presenze-b52c7",
+  storageBucket: "gestione-presenze-b52c7.firebasestorage.app",
+  messagingSenderId: "8099106330",
+  appId: "1:8099106330:web:a69dfd06a4662bd8474ba3"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+        
+        // Init Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let currentUserId = null;
+
+        // State
+        let players = [];
+        let attendance = {}; // Format: { "YYYY-MM-DD": { playerId: "present" | "absent" } }
+        let currentEditingPlayerId = null;
+
+        // Data from PDF (Fallback if Cloud is empty)
+        const initialData = [
+            { id: 'p1', name: 'Sveva', surname: 'Caruso', team: 'BIMBA', telefono: '3899980000', dataNascita: '2018-05-23' },
+            { id: 'p2', name: 'Tommaso', surname: 'Spada', team: 'BIMBO', telefono: '3715346633', dataNascita: '2020-08-01' },
+            { id: 'p3', name: 'Ginevra', surname: 'Barranco', team: 'U14 FEMMINILE', telefono: '3200108107', dataNascita: '2016-09-29' },
+            { id: 'p4', name: 'Viola', surname: 'Bottaro', team: 'U14 FEMMINILE', telefono: '3461900038', dataNascita: '2016-04-02' },
+            { id: 'p5', name: 'Bianca', surname: 'Bottaro', team: 'U14 FEMMINILE', telefono: '3461900038', dataNascita: '2016-04-02' },
+            { id: 'p6', name: 'Annachiara', surname: 'Lorefice', team: 'U14 FEMMINILE', telefono: '3332106049', dataNascita: '2015-08-28' },
+            { id: 'p7', name: 'Ludovica Lucia', surname: 'Lorefice', team: 'U14 FEMMINILE', telefono: '3332106049', dataNascita: '2015-12-10' },
+            { id: 'p8', name: 'Agnese', surname: 'Lutri', team: 'U14 FEMMINILE', telefono: '3358415319', dataNascita: '2014-01-01' },
+            { id: 'p9', name: 'Yassmine', surname: 'Ben hadda', team: 'U14 FEMMINILE', telefono: '3296943861', dataNascita: '2013-04-07' },
+            { id: 'p10', name: 'Rachele', surname: 'Santoro', team: 'U14 FEMMINILE', telefono: '3519957519', dataNascita: '2013-08-13' },
+            { id: 'p11', name: 'Vittoria', surname: 'Carpanzano', team: 'U14 FEMMINILE', telefono: '3273386743', dataNascita: '2014-03-07' },
+            { id: 'p12', name: 'Samuele', surname: 'Fazzina', team: 'U14A', telefono: '3383066302', dataNascita: '2013-12-23' },
+            { id: 'p13', name: 'Alessio', surname: 'Valente', team: 'U14A', telefono: '3298275557', dataNascita: '2014-09-09' },
+            { id: 'p14', name: 'Vincenzo', surname: 'Sampieri', team: 'U14A', telefono: '3803871388', dataNascita: '2013-06-25' },
+            { id: 'p15', name: 'Francesco', surname: 'Bisicchia', team: 'U14A', telefono: '3289542081', dataNascita: '2013-04-06' },
+            { id: 'p16', name: 'Federico', surname: 'Scatà', team: 'U14A', telefono: '3288688962', dataNascita: '2013-03-19' },
+            { id: 'p17', name: 'Nicolò', surname: 'Licitra', team: 'U14A', telefono: '3336841533', dataNascita: '2013-11-28' },
+            { id: 'p18', name: 'Riccardo', surname: 'Bottaro', team: 'U14A', telefono: '3461900038', dataNascita: '2013-03-13' },
+            { id: 'p19', name: 'Elia', surname: 'Ramondetta', team: 'U14A', telefono: '3513359100', dataNascita: '2013-10-23' },
+            { id: 'p20', name: 'Alessandro', surname: 'Burgio', team: 'U14A', telefono: '3456900992', dataNascita: '2013-11-15' },
+            { id: 'p21', name: 'Mariano', surname: 'Garofalo', team: 'U14A', telefono: '3451155001', dataNascita: '2014-02-14' },
+            { id: 'p22', name: 'Giovanni', surname: 'Russo', team: 'U14B', telefono: '3288174699', dataNascita: '2015-06-25' },
+            { id: 'p23', name: 'Mario', surname: 'Russo', team: 'U14B', telefono: '3288174699', dataNascita: '2015-06-25' },
+            { id: 'p24', name: 'Davide', surname: 'Tine\'', team: 'U14B', telefono: '3895377563', dataNascita: '2016-02-17' },
+            { id: 'p25', name: 'Daniele', surname: 'Lamera', team: 'U14B', telefono: '3397048336', dataNascita: '2016-09-28' },
+            { id: 'p26', name: 'Andrea', surname: 'Monteneri', team: 'U14B', telefono: '3471387017', dataNascita: '2016-02-10' },
+            { id: 'p27', name: 'Giordano', surname: 'Torneo', team: 'U14B', telefono: '3316348298', dataNascita: '2015-04-02' },
+            { id: 'p28', name: 'Alessandro', surname: 'Giunta', team: 'U14B', telefono: '3400935658', dataNascita: '2016-04-11' },
+            { id: 'p29', name: 'Brando', surname: 'Campisi', team: 'U14B', telefono: '3803421368', dataNascita: '2016-01-26' },
+            { id: 'p30', name: 'Christian', surname: 'Randazzo', team: 'U14B', telefono: '3338570968', dataNascita: '2016-09-25' },
+            { id: 'p31', name: 'Federico', surname: 'Tripodi', team: 'U14B', telefono: '3200878425', dataNascita: '2017-06-23' },
+            { id: 'p32', name: 'Vittorio Ascanio', surname: 'Assenza', team: 'U14B', telefono: '3394943830', dataNascita: '2015-05-03' },
+            { id: 'p33', name: 'Leonardo', surname: 'Assenza', team: 'U14B', telefono: '3394943830', dataNascita: '2017-02-02' },
+            { id: 'p34', name: 'FEDERICO', surname: 'DI ROSOLIN', team: 'U14B', telefono: '3201186384', dataNascita: '2015-01-12' },
+            { id: 'p35', name: 'Andrea', surname: 'Moscuzza', team: 'U14B', telefono: '3421938861', dataNascita: '2013-02-26' },
+            { id: 'p36', name: 'Raffaele', surname: 'Barranco', team: 'U16A', telefono: '3200108107', dataNascita: '2012-10-23' },
+            { id: 'p37', name: 'Lorenzo', surname: 'Rizza', team: 'U16A', telefono: '3319472526', dataNascita: '2012-08-16' },
+            { id: 'p38', name: 'Riccardo', surname: 'Liistro', team: 'U16A', telefono: '3409550494', dataNascita: '2012-09-04' },
+            { id: 'p39', name: 'Manuele', surname: 'Mazzullo', team: 'U16A', telefono: '3208060561', dataNascita: '2012-05-13' },
+            { id: 'p40', name: 'Giuseppe', surname: 'Rindinella', team: 'U16A', telefono: '3293652745', dataNascita: '2011-08-22' },
+            { id: 'p41', name: 'Mattia', surname: 'Primavera', team: 'U16A', telefono: '3298166333', dataNascita: '2012-01-18' },
+            { id: 'p42', name: 'Riccardo', surname: 'Garofalo', team: 'U16A', telefono: '3451155001', dataNascita: '2011-02-24' },
+            { id: 'p43', name: 'Lorenzo', surname: 'Rametta', team: 'U16A', telefono: '3487412912', dataNascita: '2011-07-06' },
+            { id: 'p44', name: 'Flavio', surname: 'Tripodi', team: 'U16A', telefono: '3200877425', dataNascita: '2012-07-19' },
+            { id: 'p45', name: 'Andrea', surname: 'Lutri', team: 'U16A', telefono: '3358415319', dataNascita: '2012-06-21' },
+            { id: 'p46', name: 'Fabrizio', surname: 'Triolo', team: 'U16A', telefono: '3337824618', dataNascita: '2012-07-22' },
+            { id: 'p47', name: 'Alfredo', surname: 'Cilio', team: 'U16A', telefono: '3388512193', dataNascita: '2012-10-05' },
+            { id: 'p48', name: 'Matteo', surname: 'La Porta', team: 'U16B', telefono: '3921568760', dataNascita: '2012-07-11' },
+            { id: 'p49', name: 'Leonardo', surname: 'D\'Anna', team: 'U16B', telefono: '3206288787', dataNascita: '2012-02-01' },
+            { id: 'p50', name: 'Gabriele', surname: 'Caia', team: 'U16B', telefono: '3298887583', dataNascita: '2011-11-25' },
+            { id: 'p51', name: 'EMANUELE', surname: 'LAMERA', team: 'U16B', telefono: '3397048336', dataNascita: '2012-12-12' },
+            { id: 'p52', name: 'Francesco', surname: 'Giunta', team: 'U16B', telefono: '3400935658', dataNascita: '2012-08-31' },
+            { id: 'p53', name: 'Andrea', surname: 'Romano', team: 'U16B', telefono: '3383957911', dataNascita: '2011-07-07' },
+            { id: 'p54', name: 'Riccardo', surname: 'Pirosa', team: 'U16B', telefono: '3338028999', dataNascita: '2011-10-24' },
+            { id: 'p55', name: 'Federico', surname: 'Agnello', team: 'U16B', telefono: '3294451056', dataNascita: '2011-06-03' },
+            { id: 'p56', name: 'Christian', surname: 'Satta', team: 'U16B', telefono: '3491692886', dataNascita: '2012-11-23' },
+            { id: 'p57', name: 'Matteo', surname: 'Amore', team: 'U16B', telefono: '3474705727', dataNascita: '2011-09-24' },
+            { id: 'p58', name: 'Andrea', surname: 'Grande', team: 'U18', telefono: '3398436392', dataNascita: '2010-10-01' },
+            { id: 'p59', name: 'Andrea', surname: 'Di Martino', team: 'U18', telefono: '', dataNascita: '' },
+            { id: 'p60', name: 'Ivan', surname: 'Vila', team: 'U18', telefono: '', dataNascita: '' },
+            { id: 'p61', name: 'Ennio', surname: 'Reale', team: 'U18', telefono: '', dataNascita: '' },
+            { id: 'p62', name: 'Lorenzo', surname: 'Della Bina', team: 'U18', telefono: '', dataNascita: '' },
+            { id: 'p63', name: 'Francesco', surname: 'Palestro', team: 'U18', telefono: '', dataNascita: '' },
+            { id: 'p64', name: 'Nicolo', surname: 'Santandrea', team: 'U18', telefono: '', dataNascita: '' },
+            { id: 'p65', name: 'Salvo', surname: 'Attivelli', team: 'U18', telefono: '', dataNascita: '' },
+            { id: 'p66', name: 'Antonino', surname: 'Panicola', team: 'U18', telefono: '', dataNascita: '' },
+            { id: 'p67', name: 'Ivan', surname: 'Vernuccio', team: 'U18', telefono: '', dataNascita: '' }
+        ];
+
+        window.onload = async () => {
+            initUI();
+            setupEventListeners();
+            
+            try {
+                // Autenticación: usa token especial en el chat, o inicio anónimo en tu propia web
+                if (isCanvasEnv && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                currentUserId = auth.currentUser.uid;
+                initCloudData();
+            } catch (error) {
+                console.error("Auth Error:", error);
+                document.getElementById('syncText').textContent = "Errore di connessione cloud";
+                document.getElementById('cloudSyncBanner').classList.replace('bg-yellow-500', 'bg-red-500');
+            }
+        };
+
+        // Rutas dinámicas (Protegen el entorno de prueba, pero usan rutas limpias en tu base de datos)
+        const getPlayersPath = () => isCanvasEnv 
+            ? `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default'}/users/${currentUserId}/players`
+            : `users/${currentUserId}/players`; 
+            
+        const getAttendancePath = () => isCanvasEnv 
+            ? `artifacts/${typeof __app_id !== 'undefined' ? __app_id : 'default'}/users/${currentUserId}/attendance`
+            : `users/${currentUserId}/attendance`; 
+
+        function initCloudData() {
+            // Check for legacy local data to migrate
+            const savedLocalPlayers = localStorage.getItem('app_players');
+            const savedLocalAttendance = localStorage.getItem('app_attendance');
+
+            // Listen for Players Collection
+            onSnapshot(collection(db, getPlayersPath()), async (snapshot) => {
+                if (snapshot.empty && players.length === 0) {
+                    // Seed initial data if cloud is empty
+                    if (savedLocalPlayers) {
+                        // Migrate local data to cloud
+                        let parsedLocal = JSON.parse(savedLocalPlayers);
+                        for (const p of parsedLocal) {
+                             if(!p.dataIscrizione) p.dataIscrizione = '2026-09-01';
+                             await setDoc(doc(db, getPlayersPath(), p.id), p);
+                        }
+                        localStorage.removeItem('app_players'); // Clean up after migration
+                    } else {
+                        // Seed default data
+                        for (const p of initialData) {
+                            const pData = { ...p, photo: null, dataIscrizione: '2026-09-01' };
+                            await setDoc(doc(db, getPlayersPath(), p.id), pData);
+                        }
+                    }
+                } else {
+                    players = [];
+                    snapshot.forEach(doc => {
+                        players.push(doc.data());
+                    });
+                    populateTeamSelectors();
+                    renderViews();
+                    hideSyncBanner();
+                }
+            }, (error) => {
+                console.error("Error listening to players: ", error);
+            });
+
+            // Listen for Attendance Collection
+            onSnapshot(collection(db, getAttendancePath()), async (snapshot) => {
+                 if (snapshot.empty && savedLocalAttendance) {
+                     // Migrate local attendance to cloud
+                     let parsedAtt = JSON.parse(savedLocalAttendance);
+                     for (const dateKey in parsedAtt) {
+                         await setDoc(doc(db, getAttendancePath(), dateKey), { records: parsedAtt[dateKey] });
+                     }
+                     localStorage.removeItem('app_attendance');
+                 } else {
+                     attendance = {};
+                     snapshot.forEach(doc => {
+                         attendance[doc.id] = doc.data().records || {};
+                     });
+                     renderViews();
+                 }
+            }, (error) => {
+                 console.error("Error listening to attendance: ", error);
+            });
+        }
+
+        function hideSyncBanner() {
+            const banner = document.getElementById('cloudSyncBanner');
+            banner.classList.replace('banner-visible', 'banner-hidden');
+        }
+
+        function renderViews() {
+            if (!document.getElementById('viewAppello').classList.contains('hidden')) renderAppelloList();
+            if (!document.getElementById('viewStorico').classList.contains('hidden')) renderStorico();
+            if (!document.getElementById('viewGiocatori').classList.contains('hidden')) renderGiocatori();
+        }
+
+        function initUI() {
+            const today = new Date();
+            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+            document.getElementById('currentDateDisplay').textContent = today.toLocaleDateString('it-IT', options);
+
+            const isoDate = today.toISOString().split('T')[0];
+            document.getElementById('attendanceDate').value = isoDate;
+            
+            const monthStr = String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('monthSelector').value = monthStr;
+            document.getElementById('yearSelector').value = today.getFullYear().toString();
+        }
+
+        function populateTeamSelectors() {
+            const teams = [...new Set(players.map(p => p.team))].sort();
+            
+            const teamSelect = document.getElementById('teamSelector');
+            const historyTeamSelect = document.getElementById('historyTeamSelector');
+            const rosterTeamSelect = document.getElementById('rosterTeamSelector');
+            const teamOptions = document.getElementById('teamOptions');
+            
+            const currentAppello = teamSelect.value;
+            const currentStorico = historyTeamSelect.value;
+            const currentRoster = rosterTeamSelect ? rosterTeamSelect.value : 'ALL';
+
+            teamSelect.innerHTML = '<option value="">Seleziona...</option>';
+            historyTeamSelect.innerHTML = '<option value="ALL">Tutte le squadre</option>';
+            if(rosterTeamSelect) rosterTeamSelect.innerHTML = '<option value="ALL">Tutte le squadre</option>';
+            if(teamOptions) teamOptions.innerHTML = '';
+            
+            teams.forEach(team => {
+                const opt = document.createElement('option');
+                opt.value = team;
+                opt.textContent = team;
+                teamSelect.appendChild(opt);
+                
+                const optHist = document.createElement('option');
+                optHist.value = team;
+                optHist.textContent = team;
+                historyTeamSelect.appendChild(optHist);
+
+                if(rosterTeamSelect) {
+                    const optRoster = document.createElement('option');
+                    optRoster.value = team;
+                    optRoster.textContent = team;
+                    rosterTeamSelect.appendChild(optRoster);
+                }
+
+                if(teamOptions) {
+                    const dlOpt = document.createElement('option');
+                    dlOpt.value = team;
+                    teamOptions.appendChild(dlOpt);
+                }
+            });
+
+            teamSelect.value = currentAppello || '';
+            historyTeamSelect.value = currentStorico || 'ALL';
+            if(rosterTeamSelect) rosterTeamSelect.value = currentRoster || 'ALL';
+        }
+
+        function setupEventListeners() {
+            document.getElementById('teamSelector').addEventListener('change', renderAppelloList);
+            document.getElementById('attendanceDate').addEventListener('change', renderAppelloList);
+            
+            document.getElementById('monthSelector').addEventListener('change', renderStorico);
+            document.getElementById('yearSelector').addEventListener('change', renderStorico);
+            document.getElementById('historyTeamSelector').addEventListener('change', renderStorico);
+
+            document.getElementById('rosterTeamSelector').addEventListener('change', renderGiocatori);
+            document.getElementById('playerSearchInput').addEventListener('input', renderGiocatori);
+            document.getElementById('cameraInput').addEventListener('change', handlePhotoUpload);
+        }
+
+        async function markAttendance(date, playerId, status) {
+            if (!currentUserId) return;
+
+            // Optimistic UI Update for immediate feedback
+            if (!attendance[date]) attendance[date] = {};
+            if (attendance[date][playerId] === status) {
+                delete attendance[date][playerId];
+            } else {
+                attendance[date][playerId] = status;
+            }
+            renderAppelloList(); 
+
+            // Save to Cloud
+            try {
+                await setDoc(doc(db, getAttendancePath(), date), { records: attendance[date] });
+            } catch(e) {
+                console.error("Cloud Error:", e);
+                alert("Errore di sincronizzazione"); // Only fallback for critical cloud error
+            }
+        }
+
+        async function savePlayerToCloud(playerObj) {
+            if (!currentUserId) return;
+            try {
+                await setDoc(doc(db, getPlayersPath(), playerObj.id), playerObj);
+                closePlayerModal();
+            } catch(e) {
+                console.error("Save Error:", e);
+            }
+        }
+
+        async function deletePlayerFromCloud(playerId) {
+            if (!currentUserId) return;
+            try {
+                 await deleteDoc(doc(db, getPlayersPath(), playerId));
+                 closePlayerModal();
+            } catch(e) {
+                console.error("Delete Error:", e);
+            }
+        }
+
+        function getInitials(name, surname) {
+            return (name.charAt(0) + surname.charAt(0)).toUpperCase();
+        }
+
+        function renderAppelloList() {
+            const team = document.getElementById('teamSelector').value;
+            const date = document.getElementById('attendanceDate').value;
+            const container = document.getElementById('playersList');
+            
+            container.innerHTML = '';
+
+            if (!team || !date) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 mt-10 py-10">
+                        <i class="fa-solid fa-users text-4xl mb-3 text-gray-300"></i>
+                        <p>Seleziona una squadra per iniziare l'appello.</p>
+                    </div>`;
+                return;
+            }
+
+            const teamPlayers = players.filter(p => p.team === team);
+            if (!attendance[date]) attendance[date] = {};
+
+            teamPlayers.forEach(player => {
+                const status = attendance[date][player.id] || 'none';
+                
+                const card = document.createElement('div');
+                card.className = 'bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3';
+                
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = 'w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0 border-2 border-transparent active:border-blue-400 cursor-pointer';
+                avatarDiv.onclick = () => window.openPhotoModal(player.id);
+                
+                if (player.photo) {
+                    avatarDiv.innerHTML = `<img src="${player.photo}" class="avatar-img" alt="${player.name}">`;
+                } else {
+                    avatarDiv.innerHTML = getInitials(player.name, player.surname);
+                }
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'flex-1';
+                infoDiv.innerHTML = `<p class="font-semibold text-gray-800 leading-tight">${player.surname} ${player.name}</p>`;
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex gap-2';
+
+                const btnPresent = document.createElement('button');
+                btnPresent.className = `w-10 h-10 rounded-full border flex items-center justify-center status-btn ${status === 'present' ? 'status-present shadow-md' : 'status-none hover:bg-gray-200'}`;
+                btnPresent.innerHTML = '<i class="fa-solid fa-check"></i>';
+                btnPresent.onclick = () => markAttendance(date, player.id, 'present');
+
+                const btnAbsent = document.createElement('button');
+                btnAbsent.className = `w-10 h-10 rounded-full border flex items-center justify-center status-btn ${status === 'absent' ? 'status-absent shadow-md' : 'status-none hover:bg-gray-200'}`;
+                btnAbsent.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                btnAbsent.onclick = () => markAttendance(date, player.id, 'absent');
+
+                actionsDiv.appendChild(btnPresent);
+                actionsDiv.appendChild(btnAbsent);
+                card.appendChild(avatarDiv);
+                card.appendChild(infoDiv);
+                card.appendChild(actionsDiv);
+                container.appendChild(card);
+            });
+        }
+
+        function renderStorico() {
+            const month = document.getElementById('monthSelector').value;
+            const year = document.getElementById('yearSelector').value;
+            const teamFilter = document.getElementById('historyTeamSelector').value;
+            const tbody = document.getElementById('historyTableBody');
+            
+            tbody.innerHTML = '';
+            const targetPrefix = `${year}-${month}`;
+
+            const targetPlayers = teamFilter === 'ALL' 
+                ? players 
+                : players.filter(p => p.team === teamFilter);
+
+            targetPlayers.forEach(player => {
+                let presences = 0;
+                let absences = 0;
+
+                Object.keys(attendance).forEach(date => {
+                    if (date.startsWith(targetPrefix)) {
+                        const status = attendance[date][player.id];
+                        if (status === 'present') presences++;
+                        if (status === 'absent') absences++;
+                    }
+                });
+
+                const tr = document.createElement('tr');
+                tr.className = 'bg-white border-b hover:bg-gray-50';
+                tr.innerHTML = `
+                    <th scope="row" class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                        ${player.surname} ${player.name}
+                        ${teamFilter === 'ALL' ? `<br><span class="text-xs text-gray-400 font-normal">${player.team}</span>` : ''}
+                    </th>
+                    <td class="px-4 py-3 text-center text-green-600 font-bold bg-green-50/30">${presences}</td>
+                    <td class="px-4 py-3 text-center text-red-600 font-bold bg-red-50/30">${absences}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            if (targetPlayers.length === 0) {
+                 tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-gray-500">Nessun giocatore trovato</td></tr>`;
+            }
+        }
+
+        function renderGiocatori() {
+            const teamFilter = document.getElementById('rosterTeamSelector').value;
+            const searchQuery = (document.getElementById('playerSearchInput').value || '').toLowerCase();
+            const container = document.getElementById('rosterList');
+            container.innerHTML = '';
+
+            let targetPlayers = teamFilter === 'ALL' 
+                ? players 
+                : players.filter(p => p.team === teamFilter);
+
+            if (searchQuery) {
+                targetPlayers = targetPlayers.filter(p => 
+                    p.name.toLowerCase().includes(searchQuery) || 
+                    p.surname.toLowerCase().includes(searchQuery)
+                );
+            }
+
+            targetPlayers.sort((a, b) => a.surname.localeCompare(b.surname));
+
+            targetPlayers.forEach(player => {
+                const card = document.createElement('div');
+                card.className = 'bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors';
+                card.onclick = () => window.openPlayerModal(player.id);
+                
+                const avatarDiv = document.createElement('div');
+                avatarDiv.className = 'w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0';
+                if (player.photo) {
+                    avatarDiv.innerHTML = `<img src="${player.photo}" class="avatar-img" alt="${player.name}">`;
+                } else {
+                    avatarDiv.innerHTML = getInitials(player.name, player.surname);
+                }
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'flex-1';
+                
+                let entryDateStr = '';
+                if(player.dataIscrizione) {
+                    const d = new Date(player.dataIscrizione);
+                    if(!isNaN(d)) entryDateStr = ` • Iscr: ${d.toLocaleDateString('it-IT')}`;
+                }
+
+                infoDiv.innerHTML = `
+                    <p class="font-semibold text-gray-800 leading-tight">${player.surname} ${player.name}</p>
+                    <p class="text-xs text-gray-500 mt-1">${player.team}${entryDateStr}</p>
+                `;
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex gap-2';
+
+                if (player.telefono) {
+                    let waPhone = player.telefono.replace(/\s+/g, '');
+                    if (!waPhone.startsWith('+')) waPhone = '+39' + waPhone;
+
+                    actionsDiv.innerHTML = `
+                        <a href="tel:${player.telefono}" onclick="event.stopPropagation()" class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 shadow-sm"><i class="fa-solid fa-phone"></i></a>
+                        <a href="https://wa.me/${waPhone}" target="_blank" onclick="event.stopPropagation()" class="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 shadow-sm"><i class="fa-brands fa-whatsapp text-xl"></i></a>
+                    `;
+                } else {
+                    actionsDiv.innerHTML = `<div class="w-10 h-10 flex items-center justify-center text-gray-300"><i class="fa-solid fa-chevron-right"></i></div>`;
+                }
+
+                card.appendChild(avatarDiv);
+                card.appendChild(infoDiv);
+                card.appendChild(actionsDiv);
+                container.appendChild(card);
+            });
+
+            if (targetPlayers.length === 0) {
+                 container.innerHTML = `<div class="text-center py-8 text-gray-500">Nessun giocatore trovato</div>`;
+            }
+        }
+
+        window.switchTab = function(tab) {
+            const vAppello = document.getElementById('viewAppello');
+            const vStorico = document.getElementById('viewStorico');
+            const vGiocatori = document.getElementById('viewGiocatori');
+            const tAppello = document.getElementById('tabAppello');
+            const tStorico = document.getElementById('tabStorico');
+            const tGiocatori = document.getElementById('tabGiocatori');
+
+            vAppello.classList.add('hidden');
+            vStorico.classList.add('hidden');
+            vGiocatori.classList.add('hidden');
+            
+            const inactiveClass = 'flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none';
+            const activeClass = 'flex-1 py-4 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none';
+            
+            tAppello.className = inactiveClass;
+            tStorico.className = inactiveClass;
+            tGiocatori.className = inactiveClass;
+
+            if (tab === 'appello') {
+                vAppello.classList.remove('hidden');
+                tAppello.className = activeClass;
+            } else if (tab === 'storico') {
+                vStorico.classList.remove('hidden');
+                tStorico.className = activeClass;
+                renderStorico();
+            } else if (tab === 'giocatori') {
+                vGiocatori.classList.remove('hidden');
+                tGiocatori.className = activeClass;
+                renderGiocatori();
+            }
+        };
+
+        window.openPlayerModal = function(playerId = null) {
+            const modal = document.getElementById('playerModal');
+            const title = document.getElementById('playerModalTitle');
+            const form = document.getElementById('playerForm');
+            const deleteBtn = document.getElementById('deletePlayerBtn');
+
+            form.reset();
+
+            if (playerId) {
+                const player = players.find(p => p.id === playerId);
+                if(!player) return;
+                
+                title.textContent = 'Modifica Giocatore';
+                document.getElementById('editPlayerId').value = player.id;
+                document.getElementById('playerName').value = player.name;
+                document.getElementById('playerSurname').value = player.surname;
+                document.getElementById('playerTeam').value = player.team;
+                document.getElementById('playerPhone').value = player.telefono || '';
+                document.getElementById('playerBirth').value = player.dataNascita || '';
+                document.getElementById('playerEntry').value = player.dataIscrizione || '';
+                
+                deleteBtn.classList.remove('hidden');
+            } else {
+                title.textContent = 'Aggiungi Giocatore';
+                document.getElementById('editPlayerId').value = '';
+                document.getElementById('playerEntry').value = new Date().toISOString().split('T')[0]; 
+                deleteBtn.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+        };
+
+        window.closePlayerModal = function() {
+            document.getElementById('playerModal').classList.add('hidden');
+        };
+
+        window.savePlayer = function(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('editPlayerId').value;
+            const name = document.getElementById('playerName').value.trim();
+            const surname = document.getElementById('playerSurname').value.trim();
+            const team = document.getElementById('playerTeam').value.trim().toUpperCase();
+            const phone = document.getElementById('playerPhone').value.trim();
+            const birth = document.getElementById('playerBirth').value;
+            const entry = document.getElementById('playerEntry').value;
+
+            if(!name || !surname || !team) return;
+
+            let playerObj;
+            if (id) {
+                const existing = players.find(p => p.id === id);
+                playerObj = {
+                    ...existing,
+                    name: name,
+                    surname: surname,
+                    team: team,
+                    telefono: phone,
+                    dataNascita: birth,
+                    dataIscrizione: entry
+                };
+            } else {
+                playerObj = {
+                    id: 'p' + Date.now(),
+                    name: name,
+                    surname: surname,
+                    team: team,
+                    telefono: phone,
+                    dataNascita: birth,
+                    dataIscrizione: entry,
+                    photo: null
+                };
+            }
+            // Start Cloud Save (will trigger UI update via snapshot)
+            savePlayerToCloud(playerObj);
+        };
+
+        window.deletePlayer = function() {
+            const id = document.getElementById('editPlayerId').value;
+            if(!id) return;
+            
+            // Custom modal could be used here, but confirm is prevented by iframe rules sometimes. 
+            // Since this app might run natively, we can use a basic JS prompt equivalent logic or just delete.
+            // A simple delete is best for touch interfaces if the delete button is well hidden inside edit.
+            deletePlayerFromCloud(id);
+        };
+
+        window.openPhotoModal = function(playerId) {
+            currentEditingPlayerId = playerId;
+            const player = players.find(p => p.id === playerId);
+            if (!player) return;
+
+            document.getElementById('modalPlayerName').textContent = `${player.name} ${player.surname}`;
+            document.getElementById('modalPlayerTeam').textContent = player.team;
+            
+            const previewImg = document.getElementById('modalPreviewImg');
+            const previewIcon = document.getElementById('modalPreviewIcon');
+            const removeBtn = document.getElementById('removePhotoBtn');
+
+            if (player.photo) {
+                previewImg.src = player.photo;
+                previewImg.classList.remove('hidden');
+                previewIcon.classList.add('hidden');
+                removeBtn.classList.remove('hidden');
+            } else {
+                previewImg.src = '';
+                previewImg.classList.add('hidden');
+                previewIcon.classList.remove('hidden');
+                removeBtn.classList.add('hidden');
+            }
+
+            document.getElementById('photoModal').classList.remove('hidden');
+        };
+
+        window.closePhotoModal = function() {
+            document.getElementById('photoModal').classList.add('hidden');
+            currentEditingPlayerId = null;
+        };
+
+        window.removePhoto = function() {
+            if (!currentEditingPlayerId) return;
+            const player = players.find(p => p.id === currentEditingPlayerId);
+            if (player) {
+                player.photo = null;
+                savePlayerToCloud(player);
+                window.closePhotoModal();
+            }
+        };
+
+        function handlePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file || !currentEditingPlayerId) return;
+
+            // Show loading state on modal
+            document.getElementById('modalPreviewIcon').className = "fa-solid fa-spinner fa-spin text-4xl text-blue-500";
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.getElementById('compressCanvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Very aggressive compression for Cloud Database 
+                    const MAX_WIDTH = 150; 
+                    const MAX_HEIGHT = 150;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                    } else {
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // High compression (0.6 quality) to keep string < 15kb
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+
+                    const player = players.find(p => p.id === currentEditingPlayerId);
+                    if (player) {
+                        player.photo = dataUrl;
+                        savePlayerToCloud(player).then(() => {
+                            window.closePhotoModal();
+                        });
+                    }
+                }
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        window.exportToCSV = function() {
+            const month = document.getElementById('monthSelector').options[document.getElementById('monthSelector').selectedIndex].text;
+            const year = document.getElementById('yearSelector').value;
+            const team = document.getElementById('historyTeamSelector').options[document.getElementById('historyTeamSelector').selectedIndex].text;
+            
+            const tbody = document.getElementById('historyTableBody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            if (rows.length === 0 || (rows.length === 1 && rows[0].innerText.includes('Nessun giocatore'))) {
+                return;
+            }
+
+            let csvContent = "\uFEFFGiocatore;Squadra;Presenze;Assenze\n";
+
+            rows.forEach(row => {
+                const cols = row.querySelectorAll('th, td');
+                if(cols.length === 3) {
+                    let nameCell = cols[0].innerHTML.replace(/<br>/g, '|').replace(/<[^>]+>/g, '').trim();
+                    let name = nameCell.split('|')[0].trim();
+                    let playerTeam = nameCell.split('|')[1] ? nameCell.split('|')[1].trim() : team;
+                    
+                    let presenze = cols[1].innerText.trim();
+                    let assenze = cols[2].innerText.trim();
+                    
+                    csvContent += `"${name}";"${playerTeam}";${presenze};${assenze}\n`;
+                }
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Presenze_${team.replace(/\s+/g, '_')}_${month}_${year}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+    </script>
+</body>
+</html>
+```
