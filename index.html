@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -32,7 +33,7 @@
 
     <!-- Cloud Sync Status Banner -->
     <div id="cloudSyncBanner" class="fixed left-0 w-full bg-yellow-500 text-white text-xs font-bold text-center py-1 z-50 banner-visible shadow-md flex justify-center items-center gap-2">
-        <i class="fa-solid fa-cloud-arrow-up animate-bounce"></i> <span id="syncText">Connessione al database...</span>
+        <i class="fa-solid fa-cloud-arrow-up animate-bounce"></i> <span id="syncText">Sincronizzazione in corso...</span>
     </div>
 
     <!-- Header -->
@@ -66,7 +67,7 @@
             <div id="playersList" class="space-y-3 mt-4">
                 <div class="text-center text-gray-500 mt-10 py-10">
                     <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-3 text-gray-300"></i>
-                    <p>Caricamento giocatori...</p>
+                    <p>Connessione al Cloud in corso...</p>
                 </div>
             </div>
         </div>
@@ -269,6 +270,7 @@
         </div>
     </div>
 
+    <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -278,25 +280,24 @@
         const firebaseConfig = {
             apiKey: "AIzaSyAEzLuN2TT77foODRGwAo3UY16VolP9nzY",
             authDomain: "gestione-presenze-b52c7.firebaseapp.com",
-            databaseURL: "https://gestione-presenze-b52c7-default-rtdb.firebaseio.com",
             projectId: "gestione-presenze-b52c7",
             storageBucket: "gestione-presenze-b52c7.firebasestorage.app",
             messagingSenderId: "8099106330",
             appId: "1:8099106330:web:a69dfd06a4662bd8474ba3"
         };
-        // =====================================
+        // ====================================
 
-        // Init Firebase
+        // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // State
+        // Estado de la aplicación
         let players = [];
         let attendance = {}; 
         let currentEditingPlayerId = null;
 
-        // Data from PDF (Fallback if Cloud is empty)
+        // DATOS INICIALES (Todos los jugadores del PDF)
         const initialData = [
             { id: 'p1', name: 'Sveva', surname: 'Caruso', team: 'BIMBA', telefono: '3899980000', dataNascita: '2018-05-23' },
             { id: 'p2', name: 'Tommaso', surname: 'Spada', team: 'BIMBO', telefono: '3715346633', dataNascita: '2020-08-01' },
@@ -372,30 +373,33 @@
             setupEventListeners();
             
             try {
-                // Iniciar sesión anónima en tu Firebase
+                // Iniciar sesión anónima de Firebase
                 await signInAnonymously(auth);
+                console.log("Autenticado en Firebase");
                 initCloudData();
             } catch (error) {
-                console.error("Auth Error:", error);
-                document.getElementById('syncText').textContent = "Errore di connessione. Verifica le regole di sicurezza (Test Mode).";
+                console.error("Error de Autenticación:", error);
+                document.getElementById('syncText').textContent = "Errore di connessione. Verifica le regole di Firestore (Test Mode).";
                 document.getElementById('cloudSyncBanner').classList.replace('bg-yellow-500', 'bg-red-500');
             }
         };
 
-        // Rutas fijas para tu base de datos
+        // Rutas directas en Firestore
         const getPlayersPath = () => `players`; 
         const getAttendancePath = () => `attendance`; 
 
         function initCloudData() {
-            // Listen for Players Collection
+            // Escuchar la colección de Jugadores
             onSnapshot(collection(db, getPlayersPath()), async (snapshot) => {
                 if (snapshot.empty && players.length === 0) {
-                    // Seed initial data if cloud is empty
+                    // SI LA BASE DE DATOS ESTÁ VACÍA: Subir los datos iniciales automáticamente
+                    console.log("Base de datos vacía. Subiendo jugadores iniciales...");
                     for (const p of initialData) {
                         const pData = { ...p, photo: null, dataIscrizione: '2026-09-01' };
                         await setDoc(doc(db, getPlayersPath(), p.id), pData);
                     }
                 } else {
+                    // Si ya hay datos, cargarlos en la app
                     players = [];
                     snapshot.forEach(doc => {
                         players.push(doc.data());
@@ -405,11 +409,11 @@
                     hideSyncBanner();
                 }
             }, (error) => {
-                console.error("Error listening to players: ", error);
+                console.error("Error leyendo jugadores: ", error);
             });
 
-            // Listen for Attendance Collection
-            onSnapshot(collection(db, getAttendancePath()), async (snapshot) => {
+            // Escuchar la colección de Asistencias
+            onSnapshot(collection(db, getAttendancePath()), (snapshot) => {
                  if (!snapshot.empty) {
                      attendance = {};
                      snapshot.forEach(doc => {
@@ -418,7 +422,7 @@
                      renderViews();
                  }
             }, (error) => {
-                 console.error("Error listening to attendance: ", error);
+                 console.error("Error leyendo asistencias: ", error);
             });
         }
 
@@ -507,7 +511,7 @@
         }
 
         async function markAttendance(date, playerId, status) {
-            // Optimistic UI Update for immediate feedback
+            // Actualización optimista de la UI
             if (!attendance[date]) attendance[date] = {};
             if (attendance[date][playerId] === status) {
                 delete attendance[date][playerId];
@@ -516,7 +520,7 @@
             }
             renderAppelloList(); 
 
-            // Save to Cloud
+            // Guardar en la nube
             try {
                 await setDoc(doc(db, getAttendancePath(), date), { records: attendance[date] });
             } catch(e) {
@@ -829,7 +833,6 @@
                     photo: null
                 };
             }
-            // Start Cloud Save
             savePlayerToCloud(playerObj);
         };
 
@@ -885,7 +888,7 @@
             const file = event.target.files[0];
             if (!file || !currentEditingPlayerId) return;
 
-            // Show loading state on modal
+            // Mostrar estado de carga en el modal
             document.getElementById('modalPreviewIcon').className = "fa-solid fa-spinner fa-spin text-4xl text-blue-500";
             
             const reader = new FileReader();
@@ -895,7 +898,7 @@
                     const canvas = document.getElementById('compressCanvas');
                     const ctx = canvas.getContext('2d');
                     
-                    // Very aggressive compression for Cloud Database 
+                    // Compresión super agresiva para Base de Datos
                     const MAX_WIDTH = 150; 
                     const MAX_HEIGHT = 150;
                     let width = img.width;
@@ -911,7 +914,7 @@
                     canvas.height = height;
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // High compression (0.6 quality) to keep string < 15kb
+                    // Compresión alta (0.6)
                     const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
 
                     const player = players.find(p => p.id === currentEditingPlayerId);
@@ -967,3 +970,4 @@
     </script>
 </body>
 </html>
+```
