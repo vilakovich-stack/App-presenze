@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aretusa Presenze Pro 2.0</title>
+    <title>Aretusa Presenze Pro 3.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -47,9 +47,38 @@
         /* Animations */
         @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .badge-new { animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .app-bg { background: radial-gradient(circle at 10% 0%, rgba(37,99,235,.08), transparent 32%), radial-gradient(circle at 100% 20%, rgba(16,185,129,.06), transparent 28%), #f5f7fb; }
+        .glass-card { background: rgba(255,255,255,.88); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.8); box-shadow: 0 12px 35px -18px rgba(15,23,42,.22); }
+        .lift { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+        .lift:active { transform: scale(.985); }
+        @media (hover:hover) { .lift:hover { transform: translateY(-2px); box-shadow: 0 16px 35px -18px rgba(15,23,42,.25); } }
+        .stat-number { animation: number-pop .35s ease both; }
+        @keyframes number-pop { from { opacity:0; transform:translateY(5px) scale(.96); } to { opacity:1; transform:none; } }
+        .ring { width:72px; height:72px; border-radius:50%; display:grid; place-items:center; position:relative; background:conic-gradient(#2563eb var(--value,0%), #e8edf5 0); }
+        .ring::after { content:''; width:56px; height:56px; background:white; border-radius:50%; position:absolute; }
+        .ring span { position:relative; z-index:1; font-weight:800; font-size:14px; color:#2563eb; }
+        .filter-pill { transition: all .2s ease; }
+        .filter-pill.active { background:#111827; color:#fff; box-shadow:0 5px 14px -7px rgba(17,24,39,.6); }
+        .player-row { animation: row-in .25s ease both; }
+        @keyframes row-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+        .status-btn { -webkit-touch-callout:none; user-select:none; }
+        .bottom-nav { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+
+        .hero-today { background: linear-gradient(135deg,#111827 0%,#1d4ed8 58%,#2563eb 100%); color:#fff; box-shadow:0 18px 40px -20px rgba(37,99,235,.55); }
+        .hero-today .soft { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.14); }
+        .season-card { background:linear-gradient(180deg,#fff,#f8fafc); }
+        .calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; }
+        .calendar-day { min-height:38px; border-radius:11px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:10px; font-weight:800; transition:transform .15s ease; }
+        .calendar-day:active { transform:scale(.94); }
+        .heat-0 { background:#f1f5f9;color:#94a3b8; } .heat-1 { background:#dbeafe;color:#1d4ed8; } .heat-2 { background:#93c5fd;color:#1e3a8a; } .heat-3 { background:#3b82f6;color:#fff; } .heat-4 { background:#1d4ed8;color:#fff; }
+        .calendar-empty { background:transparent; }
+        .rank-medal { width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:900;background:#f1f5f9;color:#64748b; }
+        .season-progress { height:10px;border-radius:99px;background:#e8edf5;overflow:hidden; }
+        .season-progress > div { height:100%;border-radius:99px;background:linear-gradient(90deg,#2563eb,#60a5fa);transition:width .5s ease; }
+
     </style>
 </head>
-<body class="text-gray-800 flex flex-col h-screen overflow-hidden relative">
+<body class="text-gray-800 flex flex-col h-screen overflow-hidden relative app-bg">
 
     <!-- Sync Banner -->
     <div id="cloudSyncBanner" class="fixed left-0 w-full bg-blue-600 text-white text-xs font-semibold text-center py-1.5 z-50 banner-visible shadow-md flex justify-center items-center gap-2">
@@ -72,11 +101,11 @@
     <!-- Main Content Area -->
     <main class="flex-1 overflow-y-auto pb-24 w-full max-w-3xl mx-auto" id="mainContainer">
         
-        <!-- View 0: Dashboard Presenze Pro 2.0 -->
+        <!-- View 0: Dashboard Presenze Pro 3.0 -->
         <div id="viewDashboard" class="p-4 space-y-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-bold text-blue-600 uppercase tracking-wider">Presenze Pro 2.0</p>
+                    <p class="text-xs font-bold text-blue-600 uppercase tracking-wider">Presenze Pro 3.0</p>
                     <h2 class="text-2xl font-bold text-gray-900">Dashboard</h2>
                 </div>
                 <button onclick="switchTab('appello')" class="bg-blue-600 text-white px-3 py-2 rounded-xl text-sm font-semibold shadow-sm active:scale-95">
@@ -84,36 +113,41 @@
                 </button>
             </div>
 
-            <div class="bg-white p-4 rounded-2xl dashboard-card">
+            <div class="glass-card p-4 rounded-3xl lift">
                 <div class="flex items-center justify-between gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Giorno</label>
-                        <input type="date" id="dashboardDate" class="bg-gray-50 border border-gray-200 text-gray-900 font-semibold text-sm rounded-xl p-2.5 outline-none">
+                    <div class="min-w-0">
+                        <label class="block text-[10px] font-extrabold text-gray-400 uppercase tracking-[.16em] mb-1">Giornata</label>
+                        <input type="date" id="dashboardDate" class="w-full bg-gray-50 border border-gray-200 text-gray-900 font-bold text-sm rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-100">
                     </div>
-                    <button onclick="setDashboardToday()" class="self-end bg-blue-50 text-blue-700 px-3 py-2.5 rounded-xl text-xs font-bold">Oggi</button>
+                    <button onclick="setDashboardToday()" class="self-end bg-blue-600 text-white px-3 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-blue-600/20 active:scale-95">Oggi</button>
+                </div>
+                <div class="mt-3 flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-[11px] text-gray-400"></i>
+                    <select id="dashboardTeamFilter" onchange="renderDashboard()" class="flex-1 bg-gray-50 border border-gray-200 text-gray-700 text-xs font-bold rounded-xl p-2.5 outline-none">
+                        <option value="ALL">Tutte le squadre</option>
+                    </select>
                 </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
                 <div class="bg-white p-4 rounded-2xl dashboard-card">
                     <div class="flex items-center justify-between"><span class="text-xs font-bold text-gray-400 uppercase">Presenti</span><span class="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center"><i class="fa-solid fa-check"></i></span></div>
-                    <p id="dashPresent" class="text-3xl font-bold text-green-600 mt-2">0</p>
+                    <p id="dashPresent" class="text-3xl font-extrabold text-green-600 mt-2 stat-number">0</p>
                     <p id="dashPresentSub" class="text-xs text-gray-400 mt-1">0 giocatori</p>
                 </div>
                 <div class="bg-white p-4 rounded-2xl dashboard-card">
                     <div class="flex items-center justify-between"><span class="text-xs font-bold text-gray-400 uppercase">Assenti</span><span class="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></span></div>
-                    <p id="dashAbsent" class="text-3xl font-bold text-red-500 mt-2">0</p>
+                    <p id="dashAbsent" class="text-3xl font-extrabold text-red-500 mt-2 stat-number">0</p>
                     <p class="text-xs text-gray-400 mt-1">registrati come assenti</p>
                 </div>
                 <div class="bg-white p-4 rounded-2xl dashboard-card">
                     <div class="flex items-center justify-between"><span class="text-xs font-bold text-gray-400 uppercase">Da segnare</span><span class="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center"><i class="fa-regular fa-circle"></i></span></div>
-                    <p id="dashNone" class="text-3xl font-bold text-gray-500 mt-2">0</p>
+                    <p id="dashNone" class="text-3xl font-extrabold text-gray-500 mt-2 stat-number">0</p>
                     <p class="text-xs text-gray-400 mt-1">nessun dato inserito</p>
                 </div>
-                <div class="bg-white p-4 rounded-2xl dashboard-card">
-                    <div class="flex items-center justify-between"><span class="text-xs font-bold text-gray-400 uppercase">Presenza</span><span class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-chart-line"></i></span></div>
-                    <p id="dashRate" class="text-3xl font-bold text-blue-600 mt-2">0%</p>
-                    <p id="dashRateSub" class="text-xs text-gray-400 mt-1">su registrati</p>
+                <div class="bg-white p-4 rounded-2xl dashboard-card flex items-center justify-between gap-2">
+                    <div><span class="text-xs font-bold text-gray-400 uppercase">Presenza</span><p id="dashRate" class="text-3xl font-extrabold text-blue-600 mt-2 stat-number">0%</p><p id="dashRateSub" class="text-xs text-gray-400 mt-1">su convocati</p></div>
+                    <div id="dashRateRing" class="ring" style="--value:0%"><span>0%</span></div>
                 </div>
             </div>
 
@@ -139,6 +173,57 @@
                 </div>
                 <div id="dashboardRecent" class="space-y-2"></div>
             </div>
+
+            <div class="hero-today rounded-3xl p-5 lift">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-[10px] font-extrabold uppercase tracking-[.18em] text-blue-100">Controllo rapido</p>
+                        <h3 class="text-2xl font-extrabold mt-1">Allenamento di oggi</h3>
+                        <p id="todayHeroText" class="text-sm text-blue-100 mt-1">Controlla subito chi è presente.</p>
+                    </div>
+                    <div class="w-11 h-11 rounded-2xl soft flex items-center justify-center"><i class="fa-solid fa-bolt"></i></div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-5">
+                    <div class="soft rounded-2xl p-3"><p class="text-[10px] text-blue-100 uppercase font-bold">Presenti</p><p id="todayPresent" class="text-xl font-extrabold mt-1">0</p></div>
+                    <div class="soft rounded-2xl p-3"><p class="text-[10px] text-blue-100 uppercase font-bold">Assenti</p><p id="todayAbsent" class="text-xl font-extrabold mt-1">0</p></div>
+                    <div class="soft rounded-2xl p-3"><p class="text-[10px] text-blue-100 uppercase font-bold">Da segnare</p><p id="todayNone" class="text-xl font-extrabold mt-1">0</p></div>
+                </div>
+                <button onclick="openTodayAppello()" class="w-full mt-4 bg-white text-blue-700 rounded-2xl py-3.5 font-extrabold text-sm shadow-lg active:scale-[.98] transition-transform">
+                    <i class="fa-solid fa-clipboard-check mr-2"></i> Apri appello di oggi
+                </button>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl dashboard-card season-card">
+                <div class="flex items-center justify-between mb-3">
+                    <div><h3 class="font-bold text-gray-900">Stagione</h3><p id="seasonLabel" class="text-xs text-gray-400">Statistiche stagione</p></div>
+                    <span id="seasonTrainingCount" class="text-xs font-bold bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full">0 allenamenti</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mb-4">
+                    <div class="bg-gray-50 rounded-2xl p-3"><p class="text-[10px] uppercase font-bold text-gray-400">Presenze</p><p id="seasonPresent" class="text-xl font-extrabold text-green-600 mt-1">0</p></div>
+                    <div class="bg-gray-50 rounded-2xl p-3"><p class="text-[10px] uppercase font-bold text-gray-400">Assenze</p><p id="seasonAbsent" class="text-xl font-extrabold text-red-500 mt-1">0</p></div>
+                    <div class="bg-gray-50 rounded-2xl p-3"><p class="text-[10px] uppercase font-bold text-gray-400">Media</p><p id="seasonRate" class="text-xl font-extrabold text-blue-600 mt-1">0%</p></div>
+                </div>
+                <div class="season-progress"><div id="seasonProgressFill" style="width:0%"></div></div>
+                <p id="seasonProgressText" class="text-[11px] text-gray-400 mt-2">Nessun dato stagionale.</p>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl dashboard-card">
+                <div class="flex items-center justify-between mb-3">
+                    <div><h3 class="font-bold text-gray-900">Calendario presenze</h3><p class="text-xs text-gray-400">Intensità = percentuale del giorno</p></div>
+                    <span id="calendarMonthLabel" class="text-xs font-bold text-blue-600"></span>
+                </div>
+                <div class="grid grid-cols-7 gap-1 mb-2 text-center text-[9px] font-extrabold text-gray-400 uppercase"><span>L</span><span>M</span><span>M</span><span>G</span><span>V</span><span>S</span><span>D</span></div>
+                <div id="attendanceCalendar" class="calendar-grid"></div>
+                <div class="flex items-center justify-end gap-2 mt-3 text-[9px] font-bold text-gray-400"><span>0%</span><span class="w-3 h-3 rounded heat-1"></span><span class="w-3 h-3 rounded heat-2"></span><span class="w-3 h-3 rounded heat-3"></span><span class="w-3 h-3 rounded heat-4"></span><span>100%</span></div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl dashboard-card">
+                <div class="flex items-center justify-between mb-3">
+                    <div><h3 class="font-bold text-gray-900">Migliori presenze</h3><p class="text-xs text-gray-400">Convocati della stagione</p></div>
+                    <button onclick="switchTab('giocatori')" class="text-xs font-bold text-blue-600">Vedi tutti <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                </div>
+                <div id="seasonRanking" class="space-y-2"></div>
+            </div>
         </div>
 
         <!-- View 1: Appello (Roll Call) -->
@@ -157,14 +242,28 @@
 
             <!-- Stats Bar & Mark All -->
             <div id="appelloControls" class="hidden flex justify-between items-center px-1">
-                <div class="flex gap-3 text-sm font-semibold">
+                <div class="flex items-center gap-3 text-sm font-semibold">
                     <span class="text-green-600"><i class="fa-solid fa-check"></i> <span id="countPresent">0</span></span>
                     <span class="text-red-500"><i class="fa-solid fa-xmark"></i> <span id="countAbsent">0</span></span>
                     <span class="text-gray-400"><i class="fa-regular fa-circle"></i> <span id="countNone">0</span></span>
+                    <span id="appelloRate" class="bg-blue-50 text-blue-600 px-2 py-1 rounded-full text-[11px] font-extrabold">0%</span>
                 </div>
                 <button onclick="markAllPresent()" class="text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg font-semibold transition-colors flex items-center gap-2">
                     <i class="fa-solid fa-check-double"></i> Tutti Presenti
                 </button>
+            </div>
+
+            <div id="appelloFilters" class="hidden bg-white/90 p-3 rounded-2xl border border-gray-100 shadow-sm space-y-2">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                    <input id="appelloSearch" oninput="renderAppelloList()" placeholder="Cerca giocatore..." class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-3 py-2.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-100">
+                </div>
+                <div class="flex gap-2 overflow-x-auto">
+                    <button id="filterAll" onclick="setAppelloFilter('all')" class="filter-pill active shrink-0 px-3 py-1.5 rounded-full text-xs font-bold">Tutti</button>
+                    <button id="filterPresent" onclick="setAppelloFilter('present')" class="filter-pill shrink-0 px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-bold">Presenti</button>
+                    <button id="filterAbsent" onclick="setAppelloFilter('absent')" class="filter-pill shrink-0 px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-bold">Assenti</button>
+                    <button id="filterNone" onclick="setAppelloFilter('none')" class="filter-pill shrink-0 px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-bold">Da segnare</button>
+                </div>
             </div>
 
             <!-- Players List -->
@@ -546,7 +645,7 @@
             if(teamOptions) teamOptions.innerHTML = '';
             
             teams.forEach(team => {
-                if(team.trim() === "") return;
+                if(!team || team.trim() === "") return;
                 const opt = document.createElement('option');
                 opt.value = team;
                 opt.textContent = team === "DA ASSEGNARE" ? "⚠️ Da Assegnare" : team;
@@ -694,37 +793,52 @@
 
         function renderDashboard() {
             const date = document.getElementById('dashboardDate').value || getLocalISODate();
-            const stats = getDateStats(date);
+            const teamFilter = document.getElementById('dashboardTeamFilter')?.value || 'ALL';
+            const effectiveTeamFilter = (teamFilter === 'ALL' || players.some(p => p.team === teamFilter)) ? teamFilter : 'ALL';
+            const stats = getDateStats(date, effectiveTeamFilter);
             document.getElementById('dashPresent').textContent = stats.present;
-            document.getElementById('dashPresentSub').textContent = `${stats.present} di ${stats.total} giocatori`;
+            document.getElementById('dashPresentSub').textContent = `${stats.present} di ${stats.registered} convocati`;
             document.getElementById('dashAbsent').textContent = stats.absent;
             document.getElementById('dashNone').textContent = stats.none;
             document.getElementById('dashRate').textContent = `${stats.rate}%`;
-            document.getElementById('dashRateSub').textContent = `${stats.registered} registrati`;
+            document.getElementById('dashRateSub').textContent = `${stats.registered} convocati`;
+            const ring=document.getElementById('dashRateRing'); if(ring){ ring.style.setProperty('--value', stats.rate+'%'); ring.querySelector('span').textContent=stats.rate+'%'; }
             document.getElementById('dashPresentTitle').textContent = new Date(date + 'T12:00:00').toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long'});
 
-            const teams = [...new Set(players.map(p => p.team).filter(Boolean))].sort((a,b) => {
+            const allTeams = [...new Set(players.map(p => p.team).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+            const dashFilter=document.getElementById('dashboardTeamFilter');
+            if(dashFilter){
+                const validFilter = teamFilter === 'ALL' || allTeams.includes(teamFilter) ? teamFilter : 'ALL';
+                dashFilter.innerHTML='<option value="ALL">Tutte le squadre</option>'+allTeams.map(t=>`<option value="${t}">${t}</option>`).join('');
+                dashFilter.value=validFilter;
+            }
+            const teams = effectiveTeamFilter === 'ALL' ? allTeams : [effectiveTeamFilter];
+            /* squadre visibili nel riepilogo */
+            const teamsForCards = teams;
+            /* mantenimento del comportamento precedente */
+            const teamsOriginal = [...new Set(players.map(p => p.team).filter(Boolean))].sort((a,b) => {
                 if (a === 'DA ASSEGNARE') return -1;
                 if (b === 'DA ASSEGNARE') return 1;
                 return a.localeCompare(b);
             });
-            document.getElementById('dashTeamCount').textContent = `${teams.length} squadre`;
+            const visibleTeams = effectiveTeamFilter === 'ALL' ? teamsOriginal : [effectiveTeamFilter];
+            document.getElementById('dashTeamCount').textContent = `${visibleTeams.length} ${visibleTeams.length === 1 ? 'squadra' : 'squadre'}`;
             const teamContainer = document.getElementById('dashboardTeams');
             teamContainer.innerHTML = '';
-            teams.forEach(team => {
+            visibleTeams.forEach(team => {
                 const s = getDateStats(date, team);
                 const card = document.createElement('button');
                 card.className = 'w-full text-left p-3 rounded-xl bg-gray-50 hover:bg-blue-50 border border-gray-100 transition-colors';
                 card.onclick = () => window.openDashboardDateInAppello(team, date);
                 const label = team === 'DA ASSEGNARE' ? '⚠️ DA ASSEGNARE' : team;
-                card.innerHTML = `<div class="flex justify-between items-center gap-3"><div class="min-w-0 flex-1"><div class="flex justify-between items-center mb-1"><span class="font-bold text-sm text-gray-900 truncate">${label}</span><span class="text-xs font-bold text-gray-500">${s.present}/${s.total}</span></div><div class="progress-track"><div class="progress-fill bg-green-500" style="width:${s.rate}%"></div></div><div class="flex justify-between mt-1"><span class="text-[11px] text-gray-400">${s.present} presenti · ${s.absent} assenti · ${s.none} da segnare</span><span class="text-[11px] font-bold text-blue-600">${s.rate}%</span></div></div><i class="fa-solid fa-chevron-right text-gray-300"></i></div>`;
+                card.innerHTML = `<div class="flex justify-between items-center gap-3"><div class="min-w-0 flex-1"><div class="flex justify-between items-center mb-1"><span class="font-bold text-sm text-gray-900 truncate">${label}</span><span class="text-xs font-bold text-gray-500">${s.present}/${s.registered}</span></div><div class="progress-track"><div class="progress-fill bg-green-500" style="width:${s.rate}%"></div></div><div class="flex justify-between mt-1"><span class="text-[11px] text-gray-400">${s.present} presenti · ${s.absent} assenti · ${s.none} non convocati</span><span class="text-[11px] font-bold text-blue-600">${s.rate}%</span></div></div><i class="fa-solid fa-chevron-right text-gray-300"></i></div>`;
                 teamContainer.appendChild(card);
             });
-            if (!teams.length) teamContainer.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Nessuna squadra disponibile.</p>';
+            if (!visibleTeams.length) teamContainer.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Nessuna squadra disponibile.</p>';
 
             const presentList = document.getElementById('dashboardPresentList');
             presentList.innerHTML = '';
-            const presentPlayers = players.filter(p => (attendance[date] || {})[p.id] === 'present').sort((a,b) => (a.surname || '').localeCompare(b.surname || ''));
+            const presentPlayers = players.filter(p => (effectiveTeamFilter === 'ALL' || p.team === effectiveTeamFilter) && (attendance[date] || {})[p.id] === 'present').sort((a,b) => (a.surname || '').localeCompare(b.surname || ''));
             presentPlayers.forEach(p => {
                 const row = document.createElement('button');
                 row.className = 'w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 text-left';
@@ -744,83 +858,171 @@
                 const row = document.createElement('button');
                 row.className = 'w-full flex items-center gap-3 p-2.5 rounded-xl bg-gray-50 hover:bg-blue-50 text-left';
                 row.onclick = () => { document.getElementById('dashboardDate').value = d; renderDashboard(); };
-                row.innerHTML = `<div class="w-12 text-center"><p class="text-[10px] uppercase font-bold text-gray-400">${label.split(' ')[0]}</p><p class="font-bold text-gray-900">${label.split(' ')[1] || ''}</p></div><div class="flex-1"><div class="flex justify-between text-xs mb-1"><span class="font-semibold text-gray-700">${label}</span><span class="font-bold text-blue-600">${s.rate}%</span></div><div class="progress-track"><div class="progress-fill bg-blue-500" style="width:${s.rate}%"></div></div><p class="text-[10px] text-gray-400 mt-1">${s.present} presenti · ${s.absent} assenti · ${s.none} da segnare</p></div>`;
+                row.innerHTML = `<div class="w-12 text-center"><p class="text-[10px] uppercase font-bold text-gray-400">${label.split(' ')[0]}</p><p class="font-bold text-gray-900">${label.split(' ')[1] || ''}</p></div><div class="flex-1"><div class="flex justify-between text-xs mb-1"><span class="font-semibold text-gray-700">${label}</span><span class="font-bold text-blue-600">${s.rate}%</span></div><div class="progress-track"><div class="progress-fill bg-blue-500" style="width:${s.rate}%"></div></div><p class="text-[10px] text-gray-400 mt-1">${s.present} presenti · ${s.absent} assenti · ${s.none} non convocati</p></div>`;
                 recent.appendChild(row);
             });
             if (!dates.length) recent.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Ancora nessun giorno registrato.</p>';
+
+            renderTodayHero();
+            renderSeasonDashboard(effectiveTeamFilter);
         }
+
+        function getSeasonBounds(baseDate = new Date()) {
+            const y = baseDate.getFullYear();
+            const startYear = baseDate.getMonth() >= 7 ? y : y - 1;
+            return { start: `${startYear}-08-01`, end: `${startYear + 1}-07-31`, label: `${startYear}/${String(startYear + 1).slice(-2)}` };
+        }
+
+        function getAttendanceDatesInSeason() {
+            const b = getSeasonBounds();
+            return Object.keys(attendance).filter(d => d >= b.start && d <= b.end && attendance[d] && Object.keys(attendance[d]).length);
+        }
+
+        function getSeasonPlayerStats(player, teamFilter='ALL') {
+            if (teamFilter !== 'ALL' && player.team !== teamFilter) return { present:0, absent:0, registered:0, rate:0 };
+            let present=0, absent=0;
+            getAttendanceDatesInSeason().forEach(d => {
+                const st = (attendance[d] || {})[player.id];
+                if (st === 'present') present++;
+                else if (st === 'absent') absent++;
+            });
+            const registered=present+absent;
+            return { present, absent, registered, rate: registered ? Math.round(present/registered*100) : 0 };
+        }
+
+        function renderTodayHero() {
+            const today=getLocalISODate();
+            const s=getDateStats(today);
+            const el=id=>document.getElementById(id);
+            if(el('todayPresent')) el('todayPresent').textContent=s.present;
+            if(el('todayAbsent')) el('todayAbsent').textContent=s.absent;
+            if(el('todayNone')) el('todayNone').textContent=s.none;
+            if(el('todayHeroText')) el('todayHeroText').textContent = s.registered ? `${s.rate}% di presenza · ${s.registered} convocati registrati` : 'Ancora nessun appello registrato per oggi.';
+        }
+
+        window.openTodayAppello = function() {
+            const today=getLocalISODate();
+            document.getElementById('attendanceDate').value=today;
+            const current=document.getElementById('teamSelector').value;
+            if(!current) {
+                const first=players.find(p=>p.team && p.team !== 'DA ASSEGNARE');
+                if(first) document.getElementById('teamSelector').value=first.team;
+            }
+            switchTab('appello');
+        };
+
+        function renderSeasonDashboard(teamFilter='ALL') {
+            const b=getSeasonBounds();
+            const dates=getAttendanceDatesInSeason();
+            let present=0, absent=0;
+            dates.forEach(d=>{ const s=getDateStats(d,teamFilter); present+=s.present; absent+=s.absent; });
+            const registered=present+absent, rate=registered?Math.round(present/registered*100):0;
+            const el=id=>document.getElementById(id);
+            if(el('seasonLabel')) el('seasonLabel').textContent=`Stagione ${b.label} · convocati esclusi se non registrati`;
+            if(el('seasonTrainingCount')) el('seasonTrainingCount').textContent=`${dates.length} ${dates.length===1?'allenamento':'allenamenti'}`;
+            if(el('seasonPresent')) el('seasonPresent').textContent=present;
+            if(el('seasonAbsent')) el('seasonAbsent').textContent=absent;
+            if(el('seasonRate')) el('seasonRate').textContent=`${rate}%`;
+            if(el('seasonProgressFill')) el('seasonProgressFill').style.width=rate+'%';
+            if(el('seasonProgressText')) el('seasonProgressText').textContent=registered?`${present} presenze su ${registered} convocazioni registrate`:'Nessun dato stagionale.';
+
+            const ranking=players.filter(p=>p.team && p.team!=='DA ASSEGNARE').map(p=>({...p, ...getSeasonPlayerStats(p,teamFilter)})).filter(p=>p.registered).sort((a,b)=>b.rate-a.rate || b.present-a.present || (a.surname||'').localeCompare(b.surname||'')).slice(0,8);
+            const box=el('seasonRanking');
+            if(box){ box.innerHTML=''; ranking.forEach((p,i)=>{
+                const row=document.createElement('button'); row.className='w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 text-left'; row.onclick=()=>window.openPlayerModal(p.id);
+                const av=p.photo?`<img src="${p.photo}" class="w-10 h-10 rounded-full object-cover">`:`<div class="w-10 h-10 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center text-xs font-bold">${getInitials(p.name,p.surname)}</div>`;
+                row.innerHTML=`${av}<div class="rank-medal">${i+1}</div><div class="flex-1 min-w-0"><p class="font-bold text-sm truncate">${p.surname} ${p.name}</p><p class="text-[10px] text-gray-400">${p.present} presenze · ${p.absent} assenze</p></div><div class="text-right"><p class="font-extrabold text-blue-600">${p.rate}%</p><p class="text-[9px] text-gray-400">${p.registered} convoc.</p></div>`; box.appendChild(row);
+            }); if(!ranking.length) box.innerHTML='<p class="text-sm text-gray-400 text-center py-5">Registra alcuni allenamenti per creare il ranking.</p>'; }
+
+            renderAttendanceCalendar();
+        }
+
+        function renderAttendanceCalendar() {
+            const box=document.getElementById('attendanceCalendar'); if(!box) return;
+            const base=new Date(); const y=base.getFullYear(), m=base.getMonth();
+            const first=new Date(y,m,1), days=new Date(y,m+1,0).getDate();
+            const mondayIndex=(first.getDay()+6)%7;
+            const monthLabel=base.toLocaleDateString('it-IT',{month:'long',year:'numeric'});
+            const label=document.getElementById('calendarMonthLabel'); if(label) label.textContent=monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1);
+            box.innerHTML='';
+            for(let i=0;i<mondayIndex;i++){ const e=document.createElement('div'); e.className='calendar-day calendar-empty'; box.appendChild(e); }
+            for(let day=1;day<=days;day++){
+                const d=`${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; const s=getDateStats(d);
+                const cell=document.createElement('button');
+                let heat=s.registered===0?'heat-0':s.rate>=90?'heat-4':s.rate>=70?'heat-3':s.rate>=40?'heat-2':'heat-1';
+                cell.className=`calendar-day ${heat}`; cell.title=s.registered?`${day}: ${s.rate}% · ${s.present} presenti · ${s.absent} assenti`:`${day}: nessun dato`;
+                cell.innerHTML=`<span>${day}</span>${s.registered?`<span class="text-[8px] opacity-80">${s.rate}%</span>`:''}`;
+                cell.onclick=()=>{ document.getElementById('dashboardDate').value=d; renderDashboard(); }; box.appendChild(cell);
+            }
+        }
+
+        let appelloFilter = 'all';
+        window.setAppelloFilter = function(filter) {
+            appelloFilter = filter;
+            ['All','Present','Absent','None'].forEach(x => { const el=document.getElementById('filter'+x); if(el) el.classList.toggle('active', filter === x.toLowerCase()); });
+            renderAppelloList();
+        };
 
         function renderAppelloList() {
             const team = document.getElementById('teamSelector').value;
             const date = document.getElementById('attendanceDate').value;
             const container = document.getElementById('playersList');
             const controls = document.getElementById('appelloControls');
-            
+            const filters = document.getElementById('appelloFilters');
             container.innerHTML = '';
 
             if (!team || !date) {
-                controls.classList.add('hidden');
-                container.innerHTML = `
-                    <div class="text-center text-gray-400 mt-12 py-12 bg-white rounded-2xl border border-gray-100 border-dashed">
-                        <i class="fa-solid fa-users text-4xl mb-3 text-gray-200"></i>
-                        <p class="font-medium text-sm">Seleziona una squadra</p>
-                    </div>`;
+                controls.classList.add('hidden'); filters.classList.add('hidden');
+                container.innerHTML = `<div class="text-center text-gray-400 mt-8 py-14 bg-white rounded-3xl border border-gray-100"><div class="w-16 h-16 mx-auto rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center text-2xl mb-4"><i class="fa-solid fa-people-group"></i></div><p class="font-bold text-gray-700">Pronto per l'appello</p><p class="text-xs mt-1">Seleziona squadra e data per iniziare.</p></div>`;
                 return;
             }
 
-            controls.classList.remove('hidden');
+            controls.classList.remove('hidden'); filters.classList.remove('hidden');
             const teamPlayers = players.filter(p => p.team === team);
             if (!attendance[date]) attendance[date] = {};
-
+            const query = (document.getElementById('appelloSearch')?.value || '').trim().toLowerCase();
             let pres = 0, abs = 0, none = 0;
+            teamPlayers.forEach(p => { const st=attendance[date][p.id]||'none'; if(st==='present')pres++; else if(st==='absent')abs++; else none++; });
 
-            teamPlayers.forEach(player => {
+            let visible = teamPlayers.filter(player => {
                 const status = attendance[date][player.id] || 'none';
-                if(status === 'present') pres++;
-                else if(status === 'absent') abs++;
-                else none++;
-                
-                const card = document.createElement('div');
-                card.className = 'bg-white p-3 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-gray-100 flex items-center gap-3 transition-colors';
-                
-                const avatarDiv = document.createElement('div');
-                avatarDiv.className = 'w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0 cursor-pointer shadow-inner';
-                avatarDiv.onclick = () => window.openPhotoModal(player.id);
-                
-                if (player.photo) {
-                    avatarDiv.innerHTML = `<img src="${player.photo}" class="avatar-img" alt="${player.name}">`;
-                } else {
-                    avatarDiv.innerHTML = getInitials(player.name, player.surname);
-                }
-
-                const infoDiv = document.createElement('div');
-                infoDiv.className = 'flex-1';
-                infoDiv.innerHTML = `<p class="font-semibold text-gray-900 leading-tight">${player.surname} ${player.name}</p>`;
-
-                const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'flex gap-2';
-
-                const btnPresent = document.createElement('button');
-                btnPresent.className = `w-12 h-12 rounded-full border-2 flex items-center justify-center status-btn ${status === 'present' ? 'status-present shadow-lg shadow-green-500/30' : 'status-none hover:bg-gray-200'}`;
-                btnPresent.innerHTML = '<i class="fa-solid fa-check text-lg"></i>';
-                btnPresent.onclick = () => window.markAttendance(date, player.id, 'present');
-
-                const btnAbsent = document.createElement('button');
-                btnAbsent.className = `w-12 h-12 rounded-full border-2 flex items-center justify-center status-btn ${status === 'absent' ? 'status-absent shadow-lg shadow-red-500/30' : 'status-none hover:bg-gray-200'}`;
-                btnAbsent.innerHTML = '<i class="fa-solid fa-xmark text-lg"></i>';
-                btnAbsent.onclick = () => window.markAttendance(date, player.id, 'absent');
-
-                actionsDiv.appendChild(btnPresent);
-                actionsDiv.appendChild(btnAbsent);
-                card.appendChild(avatarDiv);
-                card.appendChild(infoDiv);
-                card.appendChild(actionsDiv);
-                container.appendChild(card);
+                const name = `${player.surname||''} ${player.name||''}`.toLowerCase();
+                return (appelloFilter==='all' || status===appelloFilter) && (!query || name.includes(query));
+            });
+            visible.sort((a,b)=>{
+                const rank={none:0,absent:1,present:2};
+                const ra=rank[attendance[date][a.id]||'none'], rb=rank[attendance[date][b.id]||'none'];
+                return ra-rb || (a.surname||'').localeCompare(b.surname||'');
             });
 
-            document.getElementById('countPresent').innerText = pres;
-            document.getElementById('countAbsent').innerText = abs;
-            document.getElementById('countNone').innerText = none;
+            document.getElementById('countPresent').innerText=pres;
+            document.getElementById('countAbsent').innerText=abs;
+            document.getElementById('countNone').innerText=none;
+            const appRate=pres+abs?Math.round(pres/(pres+abs)*100):0;
+            const appRateEl=document.getElementById('appelloRate'); if(appRateEl) appRateEl.innerText=appRate+'%';
+
+            if (!visible.length) {
+                container.innerHTML=`<div class="text-center py-12 text-gray-400 bg-white rounded-3xl border border-dashed border-gray-200"><i class="fa-solid fa-magnifying-glass text-2xl mb-3"></i><p class="font-semibold">Nessun giocatore trovato</p><p class="text-xs mt-1">Prova a cambiare filtro o ricerca.</p></div>`;
+                return;
+            }
+
+            visible.forEach((player, idx) => {
+                const status=attendance[date][player.id]||'none';
+                const card=document.createElement('div');
+                card.className=`player-row bg-white p-3 rounded-2xl shadow-[0_4px_18px_-10px_rgba(15,23,42,.22)] border ${status==='present'?'border-green-200 bg-green-50/30':status==='absent'?'border-red-200 bg-red-50/20':'border-gray-100'} flex items-center gap-3 lift`;
+                card.style.animationDelay=`${Math.min(idx,10)*25}ms`;
+                const avatarDiv=document.createElement('div');
+                avatarDiv.className=`w-12 h-12 rounded-full ${status==='present'?'bg-green-100 text-green-700':status==='absent'?'bg-red-100 text-red-600':'bg-blue-50 text-blue-600'} flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0 cursor-pointer shadow-inner`;
+                avatarDiv.onclick=()=>window.openPhotoModal(player.id);
+                avatarDiv.innerHTML=player.photo?`<img src="${player.photo}" class="avatar-img" alt="${player.name}">`:getInitials(player.name,player.surname);
+                const infoDiv=document.createElement('div'); infoDiv.className='flex-1 min-w-0';
+                const label=status==='present'?'<span class="text-green-600">Presente</span>':status==='absent'?'<span class="text-red-500">Assente</span>':'<span class="text-gray-400">Da segnare</span>';
+                infoDiv.innerHTML=`<p class="font-bold text-gray-900 leading-tight truncate">${player.surname} ${player.name}</p><p class="text-[11px] font-semibold mt-1">${label}</p>`;
+                const actionsDiv=document.createElement('div'); actionsDiv.className='flex gap-2';
+                const btnPresent=document.createElement('button'); btnPresent.className=`w-12 h-12 rounded-full border-2 flex items-center justify-center status-btn ${status==='present'?'status-present shadow-lg shadow-green-500/30':'status-none hover:bg-green-50 hover:text-green-600'}`; btnPresent.innerHTML='<i class="fa-solid fa-check text-lg"></i>'; btnPresent.onclick=()=>window.markAttendance(date,player.id,'present');
+                const btnAbsent=document.createElement('button'); btnAbsent.className=`w-12 h-12 rounded-full border-2 flex items-center justify-center status-btn ${status==='absent'?'status-absent shadow-lg shadow-red-500/30':'status-none hover:bg-red-50 hover:text-red-500'}`; btnAbsent.innerHTML='<i class="fa-solid fa-xmark text-lg"></i>'; btnAbsent.onclick=()=>window.markAttendance(date,player.id,'absent');
+                actionsDiv.append(btnPresent,btnAbsent); card.append(avatarDiv,infoDiv,actionsDiv); container.appendChild(card);
+            });
         }
 
         function renderStorico() {
