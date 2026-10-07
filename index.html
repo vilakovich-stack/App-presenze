@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gestione Presenze Giocatori Pro</title>
+    <title>Aretusa Presenze Pro 2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -12,9 +12,14 @@
         
         /* Modern Navigation */
         .tab-active { color: #2563eb; font-weight: 600; }
-        .tab-active i { background-color: #eff6ff; padding: 0.4rem 1.2rem; border-radius: 9999px; }
+        .tab-active i { background-color: #eff6ff; padding: 0.4rem 0.55rem; border-radius: 9999px; }
         .tab-inactive { color: #6b7280; font-weight: 500; }
-        .tab-inactive i { padding: 0.4rem 1.2rem; }
+        .tab-inactive i { padding: 0.4rem 0.55rem; }
+        .dashboard-card { border: 1px solid #eef0f4; box-shadow: 0 4px 18px -8px rgba(0,0,0,.14); }
+        .progress-track { height: 7px; border-radius: 999px; background: #eef2f7; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 999px; transition: width .25s ease; }
+        .mini-bar { height: 34px; width: 100%; border-radius: 10px; background: #f3f4f6; overflow: hidden; display:flex; align-items:flex-end; gap:2px; padding:2px; }
+        .mini-bar span { flex:1; border-radius: 5px 5px 7px 7px; background:#2563eb; min-height:3px; }
         
         .avatar-img { object-fit: cover; width: 100%; height: 100%; border-radius: 50%; }
         
@@ -67,6 +72,75 @@
     <!-- Main Content Area -->
     <main class="flex-1 overflow-y-auto pb-24 w-full max-w-3xl mx-auto" id="mainContainer">
         
+        <!-- View 0: Dashboard Presenze Pro 2.0 -->
+        <div id="viewDashboard" class="p-4 space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold text-blue-600 uppercase tracking-wider">Presenze Pro 2.0</p>
+                    <h2 class="text-2xl font-bold text-gray-900">Dashboard</h2>
+                </div>
+                <button onclick="switchTab('appello')" class="bg-blue-600 text-white px-3 py-2 rounded-xl text-sm font-semibold shadow-sm active:scale-95">
+                    <i class="fa-solid fa-clipboard-check mr-1"></i> Appello
+                </button>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl dashboard-card">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Giorno</label>
+                        <input type="date" id="dashboardDate" class="bg-gray-50 border border-gray-200 text-gray-900 font-semibold text-sm rounded-xl p-2.5 outline-none">
+                    </div>
+                    <button onclick="setDashboardToday()" class="self-end bg-blue-50 text-blue-700 px-3 py-2.5 rounded-xl text-xs font-bold">Oggi</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-white p-4 rounded-2xl dashboard-card">
+                    <div class="flex items-center justify-between"><span class="text-xs font-bold text-gray-400 uppercase">Presenti</span><span class="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center"><i class="fa-solid fa-check"></i></span></div>
+                    <p id="dashPresent" class="text-3xl font-bold text-green-600 mt-2">0</p>
+                    <p id="dashPresentSub" class="text-xs text-gray-400 mt-1">0 giocatori</p>
+                </div>
+                <div class="bg-white p-4 rounded-2xl dashboard-card">
+                    <div class="flex items-center justify-between"><span class="text-xs font-bold text-gray-400 uppercase">Assenti</span><span class="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></span></div>
+                    <p id="dashAbsent" class="text-3xl font-bold text-red-500 mt-2">0</p>
+                    <p class="text-xs text-gray-400 mt-1">registrati come assenti</p>
+                </div>
+                <div class="bg-white p-4 rounded-2xl dashboard-card">
+                    <div class="flex items-center justify-between"><span class="text-xs font-bold text-gray-400 uppercase">Da segnare</span><span class="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center"><i class="fa-regular fa-circle"></i></span></div>
+                    <p id="dashNone" class="text-3xl font-bold text-gray-500 mt-2">0</p>
+                    <p class="text-xs text-gray-400 mt-1">nessun dato inserito</p>
+                </div>
+                <div class="bg-white p-4 rounded-2xl dashboard-card">
+                    <div class="flex items-center justify-between"><span class="text-xs font-bold text-gray-400 uppercase">Presenza</span><span class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fa-solid fa-chart-line"></i></span></div>
+                    <p id="dashRate" class="text-3xl font-bold text-blue-600 mt-2">0%</p>
+                    <p id="dashRateSub" class="text-xs text-gray-400 mt-1">su registrati</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl dashboard-card">
+                <div class="flex items-center justify-between mb-3">
+                    <div><h3 class="font-bold text-gray-900">Riepilogo squadre</h3><p class="text-xs text-gray-400">Presenze del giorno selezionato</p></div>
+                    <span id="dashTeamCount" class="text-xs font-bold bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">0 squadre</span>
+                </div>
+                <div id="dashboardTeams" class="space-y-3"></div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl dashboard-card">
+                <div class="flex items-center justify-between mb-3">
+                    <div><h3 class="font-bold text-gray-900">Presenti</h3><p id="dashPresentTitle" class="text-xs text-gray-400">Giocatori presenti</p></div>
+                    <button onclick="switchTab('appello')" class="text-xs font-bold text-blue-600">Apri appello <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                </div>
+                <div id="dashboardPresentList" class="space-y-2"></div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl dashboard-card">
+                <div class="flex items-center justify-between mb-3">
+                    <div><h3 class="font-bold text-gray-900">Ultimi giorni registrati</h3><p class="text-xs text-gray-400">Andamento delle presenze</p></div>
+                </div>
+                <div id="dashboardRecent" class="space-y-2"></div>
+            </div>
+        </div>
+
         <!-- View 1: Appello (Roll Call) -->
         <div id="viewAppello" class="p-4 space-y-4">
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
@@ -203,7 +277,11 @@
     <!-- Bottom Navigation -->
     <nav class="fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200 z-10 pb-safe">
         <div class="max-w-3xl mx-auto flex px-2">
-            <button onclick="switchTab('appello')" id="tabAppello" class="flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none transition-colors">
+            <button onclick="switchTab('dashboard')" id="tabDashboard" class="flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none transition-colors">
+                <i class="fa-solid fa-gauge-high text-lg"></i>
+                <span class="text-[10px] uppercase tracking-wider">Dashboard</span>
+            </button>
+            <button onclick="switchTab('appello')" id="tabAppello" class="flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none transition-colors">
                 <i class="fa-solid fa-list-check text-lg"></i>
                 <span class="text-[10px] uppercase tracking-wider">Appello</span>
             </button>
@@ -425,6 +503,7 @@
         }
 
         function renderViews() {
+            if (!document.getElementById('viewDashboard').classList.contains('hidden')) renderDashboard();
             if (!document.getElementById('viewAppello').classList.contains('hidden')) renderAppelloList();
             if (!document.getElementById('viewStorico').classList.contains('hidden')) renderStorico();
             if (!document.getElementById('viewGiocatori').classList.contains('hidden')) renderGiocatori();
@@ -436,8 +515,9 @@
             const options = { weekday: 'short', day: 'numeric', month: 'short' };
             document.getElementById('currentDateDisplay').textContent = today.toLocaleDateString('it-IT', options).toUpperCase();
 
-            const isoDate = today.toISOString().split('T')[0];
+            const isoDate = getLocalISODate(today);
             document.getElementById('attendanceDate').value = isoDate;
+            document.getElementById('dashboardDate').value = isoDate;
             
             const monthStr = String(today.getMonth() + 1).padStart(2, '0');
             document.getElementById('monthSelector').value = monthStr;
@@ -498,6 +578,7 @@
 
         function setupEventListeners() {
             document.getElementById('teamSelector').addEventListener('change', renderAppelloList);
+            document.getElementById('dashboardDate').addEventListener('change', renderDashboard);
             document.getElementById('attendanceDate').addEventListener('change', renderAppelloList);
             
             document.getElementById('monthSelector').addEventListener('change', renderStorico);
@@ -576,6 +657,97 @@
 
         function getInitials(name, surname) {
             return ((name?.charAt(0) || '') + (surname?.charAt(0) || '')).toUpperCase();
+        }
+
+        function getLocalISODate(date = new Date()) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        window.setDashboardToday = function() {
+            document.getElementById('dashboardDate').value = getLocalISODate();
+            renderDashboard();
+        };
+
+        window.openDashboardDateInAppello = function(team, date) {
+            document.getElementById('attendanceDate').value = date;
+            document.getElementById('teamSelector').value = team;
+            switchTab('appello');
+            renderAppelloList();
+        };
+
+        function getDateStats(date, teamFilter = 'ALL') {
+            const records = attendance[date] || {};
+            const filtered = teamFilter === 'ALL' ? players : players.filter(p => p.team === teamFilter);
+            let present = 0, absent = 0, none = 0;
+            filtered.forEach(p => {
+                const status = records[p.id] || 'none';
+                if (status === 'present') present++;
+                else if (status === 'absent') absent++;
+                else none++;
+            });
+            const registered = present + absent;
+            return { present, absent, none, registered, total: filtered.length, rate: registered ? Math.round((present / registered) * 100) : 0 };
+        }
+
+        function renderDashboard() {
+            const date = document.getElementById('dashboardDate').value || getLocalISODate();
+            const stats = getDateStats(date);
+            document.getElementById('dashPresent').textContent = stats.present;
+            document.getElementById('dashPresentSub').textContent = `${stats.present} di ${stats.total} giocatori`;
+            document.getElementById('dashAbsent').textContent = stats.absent;
+            document.getElementById('dashNone').textContent = stats.none;
+            document.getElementById('dashRate').textContent = `${stats.rate}%`;
+            document.getElementById('dashRateSub').textContent = `${stats.registered} registrati`;
+            document.getElementById('dashPresentTitle').textContent = new Date(date + 'T12:00:00').toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long'});
+
+            const teams = [...new Set(players.map(p => p.team).filter(Boolean))].sort((a,b) => {
+                if (a === 'DA ASSEGNARE') return -1;
+                if (b === 'DA ASSEGNARE') return 1;
+                return a.localeCompare(b);
+            });
+            document.getElementById('dashTeamCount').textContent = `${teams.length} squadre`;
+            const teamContainer = document.getElementById('dashboardTeams');
+            teamContainer.innerHTML = '';
+            teams.forEach(team => {
+                const s = getDateStats(date, team);
+                const card = document.createElement('button');
+                card.className = 'w-full text-left p-3 rounded-xl bg-gray-50 hover:bg-blue-50 border border-gray-100 transition-colors';
+                card.onclick = () => window.openDashboardDateInAppello(team, date);
+                const label = team === 'DA ASSEGNARE' ? '⚠️ DA ASSEGNARE' : team;
+                card.innerHTML = `<div class="flex justify-between items-center gap-3"><div class="min-w-0 flex-1"><div class="flex justify-between items-center mb-1"><span class="font-bold text-sm text-gray-900 truncate">${label}</span><span class="text-xs font-bold text-gray-500">${s.present}/${s.total}</span></div><div class="progress-track"><div class="progress-fill bg-green-500" style="width:${s.rate}%"></div></div><div class="flex justify-between mt-1"><span class="text-[11px] text-gray-400">${s.present} presenti · ${s.absent} assenti · ${s.none} da segnare</span><span class="text-[11px] font-bold text-blue-600">${s.rate}%</span></div></div><i class="fa-solid fa-chevron-right text-gray-300"></i></div>`;
+                teamContainer.appendChild(card);
+            });
+            if (!teams.length) teamContainer.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Nessuna squadra disponibile.</p>';
+
+            const presentList = document.getElementById('dashboardPresentList');
+            presentList.innerHTML = '';
+            const presentPlayers = players.filter(p => (attendance[date] || {})[p.id] === 'present').sort((a,b) => (a.surname || '').localeCompare(b.surname || ''));
+            presentPlayers.forEach(p => {
+                const row = document.createElement('button');
+                row.className = 'w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 text-left';
+                row.onclick = () => window.openDashboardDateInAppello(p.team, date);
+                const avatar = p.photo ? `<img src="${p.photo}" class="w-10 h-10 rounded-full object-cover">` : `<div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">${getInitials(p.name, p.surname)}</div>`;
+                row.innerHTML = `${avatar}<div class="flex-1 min-w-0"><p class="font-semibold text-sm text-gray-900 truncate">${p.surname} ${p.name}</p><p class="text-xs text-gray-400 truncate">${p.team || 'Senza squadra'}</p></div><span class="text-green-600"><i class="fa-solid fa-circle-check"></i></span>`;
+                presentList.appendChild(row);
+            });
+            if (!presentPlayers.length) presentList.innerHTML = '<div class="text-center py-6 text-gray-400"><i class="fa-regular fa-calendar-xmark text-2xl mb-2"></i><p class="text-sm font-medium">Nessuna presenza registrata per questa data.</p><p class="text-xs mt-1">Apri l’appello per iniziare.</p></div>';
+
+            const recent = document.getElementById('dashboardRecent');
+            recent.innerHTML = '';
+            const dates = Object.keys(attendance).filter(d => attendance[d] && Object.keys(attendance[d]).length).sort().reverse().slice(0, 7);
+            dates.forEach(d => {
+                const s = getDateStats(d);
+                const label = new Date(d + 'T12:00:00').toLocaleDateString('it-IT', {weekday:'short', day:'numeric', month:'short'});
+                const row = document.createElement('button');
+                row.className = 'w-full flex items-center gap-3 p-2.5 rounded-xl bg-gray-50 hover:bg-blue-50 text-left';
+                row.onclick = () => { document.getElementById('dashboardDate').value = d; renderDashboard(); };
+                row.innerHTML = `<div class="w-12 text-center"><p class="text-[10px] uppercase font-bold text-gray-400">${label.split(' ')[0]}</p><p class="font-bold text-gray-900">${label.split(' ')[1] || ''}</p></div><div class="flex-1"><div class="flex justify-between text-xs mb-1"><span class="font-semibold text-gray-700">${label}</span><span class="font-bold text-blue-600">${s.rate}%</span></div><div class="progress-track"><div class="progress-fill bg-blue-500" style="width:${s.rate}%"></div></div><p class="text-[10px] text-gray-400 mt-1">${s.present} presenti · ${s.absent} assenti · ${s.none} da segnare</p></div>`;
+                recent.appendChild(row);
+            });
+            if (!dates.length) recent.innerHTML = '<p class="text-sm text-gray-400 text-center py-4">Ancora nessun giorno registrato.</p>';
         }
 
         function renderAppelloList() {
@@ -832,32 +1004,17 @@
         }
 
         window.switchTab = function(tab) {
-            const views = ['viewAppello', 'viewStorico', 'viewGiocatori', 'viewSquadre'];
-            const tabs = ['tabAppello', 'tabStorico', 'tabGiocatori', 'tabSquadre'];
-
+            const views = ['viewDashboard', 'viewAppello', 'viewStorico', 'viewGiocatori', 'viewSquadre'];
+            const tabs = ['tabDashboard', 'tabAppello', 'tabStorico', 'tabGiocatori', 'tabSquadre'];
             views.forEach(v => document.getElementById(v).classList.add('hidden'));
-            
             const inactiveClass = 'flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-inactive focus:outline-none transition-colors relative';
             const activeClass = 'flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none transition-colors relative';
-            
             tabs.forEach(t => document.getElementById(t).className = inactiveClass);
-
-            if (tab === 'appello') {
-                document.getElementById('viewAppello').classList.remove('hidden');
-                document.getElementById('tabAppello').className = activeClass;
-            } else if (tab === 'storico') {
-                document.getElementById('viewStorico').classList.remove('hidden');
-                document.getElementById('tabStorico').className = activeClass;
-                renderStorico();
-            } else if (tab === 'giocatori') {
-                document.getElementById('viewGiocatori').classList.remove('hidden');
-                document.getElementById('tabGiocatori').className = activeClass;
-                renderGiocatori();
-            } else if (tab === 'squadre') {
-                document.getElementById('viewSquadre').classList.remove('hidden');
-                document.getElementById('tabSquadre').className = activeClass;
-                renderSquadreDashboard();
-            }
+            if (tab === 'dashboard') { document.getElementById('viewDashboard').classList.remove('hidden'); document.getElementById('tabDashboard').className = activeClass; renderDashboard(); }
+            else if (tab === 'appello') { document.getElementById('viewAppello').classList.remove('hidden'); document.getElementById('tabAppello').className = activeClass; renderAppelloList(); }
+            else if (tab === 'storico') { document.getElementById('viewStorico').classList.remove('hidden'); document.getElementById('tabStorico').className = activeClass; renderStorico(); }
+            else if (tab === 'giocatori') { document.getElementById('viewGiocatori').classList.remove('hidden'); document.getElementById('tabGiocatori').className = activeClass; renderGiocatori(); }
+            else if (tab === 'squadre') { document.getElementById('viewSquadre').classList.remove('hidden'); document.getElementById('tabSquadre').className = activeClass; renderSquadreDashboard(); }
         };
 
         window.openPlayerModal = function(playerId = null) {
