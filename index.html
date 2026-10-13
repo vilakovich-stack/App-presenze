@@ -62,7 +62,12 @@
         .player-row { animation: row-in .25s ease both; }
         @keyframes row-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
         .status-btn { -webkit-touch-callout:none; user-select:none; }
-        .bottom-nav { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+         .bottom-nav { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+        #mainContainer { min-height:0; padding-bottom: calc(110px + env(safe-area-inset-bottom)); overscroll-behavior:contain; scroll-padding-bottom:120px; }
+        #bottomNavigation { transition:transform .22s ease; will-change:transform; }
+        #bottomNavigation.nav-collapsed { transform:translateY(calc(100% - 5px)); }
+        .team-open-btn { cursor:pointer; width:100%; text-align:left; }
+        .team-open-btn:focus-visible { outline:3px solid #2563eb; outline-offset:2px; }
 
         .hero-today { background: linear-gradient(135deg,#111827 0%,#1d4ed8 58%,#2563eb 100%); color:#fff; box-shadow:0 18px 40px -20px rgba(37,99,235,.55); }
         .hero-today .soft { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.14); }
@@ -128,7 +133,7 @@
     </header>
 
     <!-- Main Content Area -->
-    <main class="flex-1 overflow-y-auto pb-24 w-full max-w-3xl mx-auto" id="mainContainer">
+    <main class="flex-1 overflow-y-auto w-full max-w-3xl mx-auto" id="mainContainer">
         
         <!-- View 0: Dashboard Presenze Pro 4.0 -->
         <div id="viewDashboard" class="p-4 space-y-4">
@@ -421,7 +426,7 @@
     </main>
 
     <!-- Bottom Navigation -->
-    <nav class="fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200 z-10 pb-safe">
+    <nav id="bottomNavigation" class="bottom-nav fixed bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200 z-10 pb-safe">
         <div class="max-w-3xl mx-auto flex px-2">
             <button onclick="switchTab('dashboard')" id="tabDashboard" class="flex-1 py-3 flex flex-col items-center justify-center gap-1 tab-active focus:outline-none transition-colors">
                 <i class="fa-solid fa-gauge-high text-lg"></i>
@@ -606,6 +611,7 @@
             document.getElementById('viewSquadre').appendChild(document.getElementById('viewGiocatori'));
             document.getElementById('viewGiocatori').classList.add('hidden');
             setTeamsPanel('squadre');
+            setupBottomNavigation();
             onAuthStateChanged(auth, user => {
                 if(user && !user.isAnonymous) showPin(user);
                 else showEmail();
@@ -656,7 +662,55 @@
         const getPlayersPath = () => `players`; 
         const getAttendancePath = () => `attendance`; 
 
+        function setupBottomNavigation() {
+            const scroller=document.getElementById('mainContainer');
+            const nav=document.getElementById('bottomNavigation');
+            let previous=0;
+            scroller.addEventListener('scroll',()=>{
+                const current=scroller.scrollTop;
+                if(current<45 || current+scroller.clientHeight>=scroller.scrollHeight-45) {
+                    nav.classList.remove('nav-collapsed');
+                } else if(current>previous+7) {
+                    nav.classList.add('nav-collapsed');
+                } else if(current<previous-7) {
+                    nav.classList.remove('nav-collapsed');
+                }
+                previous=current;
+            },{passive:true});
+            nav.addEventListener('focusin',()=>nav.classList.remove('nav-collapsed'));
+        }
+
+        window.openTeamRoster=function(teamName){
+            activeTeamsPanel='giocatori';
+            switchTab('squadre');
+            const selector=document.getElementById('rosterTeamSelector');
+            selector.value=teamName;
+            document.getElementById('playerSearchInput').value='';
+            renderGiocatori();
+            document.getElementById('mainContainer').scrollTop=0;
+          document.getElementById('bottomNavigation').classList.remove('nav-collapsed');
+        };
+
         function initCloudData() {
+            // Attendiamo entrambi i caricamenti, non soltanto la lista giocatori.
+            let playersLoaded=false, attendanceLoaded=false;
+            const syncBanner=document.getElementById('cloudSyncBanner');
+            const syncText=document.getElementById('syncText');
+            const syncReady=()=>{
+                if(!playersLoaded || !attendanceLoaded) return;
+                syncText.textContent='Dati sincronizzati';
+                syncBanner.classList.remove('bg-red-500');
+                syncBanner.classList.add('bg-blue-600');
+                hideSyncBanner();
+            };
+            const syncError=(label,err)=>{
+                console.error(label,err);
+                syncText.textContent=err?.code==='permission-denied'
+                    ? 'Accesso negato: verifica le regole Firebase'
+                    : 'Errore di sincronizzazione: verifica la connessione';
+                syncBanner.classList.remove('banner-hidden','bg-blue-600');
+                syncBanner.classList.add('banner-visible','bg-red-500');
+            };
             // Listen for Players Collection
             onSnapshot(collection(db, getPlayersPath()), async (snapshot) => {
                 players = [];
@@ -669,14 +723,13 @@
                 
                 // Update new badge
                 const badge = document.getElementById('navBadgeNew');
-                if(hasNew) badge.classList.remove('hidden');
-                else badge.classList.add('hidden');
+                if (badge) badge.classList.toggle('hidden', !hasNew);
 
                 populateTeamSelectors();
                 renderViews();
-                document.getElementById('syncText').textContent='Dati sincronizzati';
-                hideSyncBanner();
-            }, err => {console.error("Firestore players:",err);document.getElementById("syncText").textContent="Accesso Firestore negato: controlla le regole";document.getElementById("cloudSyncBanner").classList.replace("bg-blue-600","bg-red-500");});
+                playersLoaded=true;
+                syncReady();
+            }, err => syncError('Firestore players',err));
 
             // Listen for Attendance Collection
             onSnapshot(collection(db, getAttendancePath()), async (snapshot) => {
@@ -685,7 +738,9 @@
                     attendance[doc.id] = doc.data().records || {};
                 });
                 renderViews();
-            }, err => {console.error("Firestore attendance:",err);showToast("Errore caricamento presenze: controlla le regole","error");});
+                attendanceLoaded=true;
+                syncReady();
+            }, err => syncError('Firestore attendance',err));
         }
 
         function hideSyncBanner() {
@@ -1292,8 +1347,9 @@
                 const teamRoster = teamsMap[teamName];
                 const isDaAssegnare = teamName === "DA ASSEGNARE";
                 
-                const card = document.createElement('div');
-                card.className = `bg-white p-4 rounded-3xl shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] border ${isDaAssegnare ? 'border-yellow-300' : 'border-gray-100'}`;
+                const card = document.createElement('button');
+                card.type='button';
+                card.className = `team-open-btn bg-white p-4 rounded-3xl shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] border ${isDaAssegnare ? 'border-yellow-300' : 'border-gray-100'}`;
                 
                 let avatarsHtml = '';
                 const maxDisplay = 8;
@@ -1315,10 +1371,13 @@
                         <h3 class="font-bold text-gray-900 ${isDaAssegnare ? 'text-yellow-600' : ''}">${isDaAssegnare ? '⚠️ DA ASSEGNARE' : teamName}</h3>
                         <span class="bg-gray-100 text-gray-600 text-xs font-bold px-2.5 py-1 rounded-full">${teamRoster.length}</span>
                     </div>
-                    <div class="flex items-center pt-2">
-                        ${avatarsHtml}
+                    <div class="flex items-center justify-between pt-2 gap-2">
+                        <div class="flex items-center pl-3">${avatarsHtml}</div>
+                        <span class="text-xs font-bold text-blue-600 shrink-0">Apri <i class="fa-solid fa-chevron-right"></i></span>
                     </div>
                 `;
+                card.setAttribute('aria-label',`Apri giocatori della squadra ${teamName}`);
+                card.addEventListener('click',()=>window.openTeamRoster(teamName));
                 container.appendChild(card);
             });
         }
@@ -1353,6 +1412,7 @@
           else if(tab==='storico'){document.getElementById('statsHeader').classList.remove('hidden');setStatsPanel(activeStatsPanel);}
           else if(tab==='squadre'){document.getElementById('viewSquadre').classList.remove('hidden');setTeamsPanel(activeTeamsPanel);}
           document.getElementById('mainContainer').scrollTop=0;
+          document.getElementById('bottomNavigation').classList.remove('nav-collapsed');
         };
 
         window.openPlayerModal = function(playerId = null) {
