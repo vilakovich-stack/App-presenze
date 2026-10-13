@@ -80,6 +80,29 @@
 </head>
 <body class="text-gray-800 flex flex-col h-screen overflow-hidden relative app-bg">
 
+
+    <!-- Accesso amministratore: il PIN è un blocco locale, Firebase protegge i dati -->
+    <div id="accessOverlay" class="fixed inset-0 z-[100] bg-slate-100 flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl shadow-xl p-6 w-full max-w-sm space-y-4 text-center">
+        <div class="mx-auto w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl"><i class="fa-solid fa-shield-halved"></i></div>
+        <h2 class="text-xl font-extrabold">Aretusa Presenze</h2>
+        <p id="accessDescription" class="text-sm text-gray-500">Accesso amministratore</p>
+        <form id="emailLoginForm" class="space-y-3 hidden">
+          <input id="adminEmail" type="email" autocomplete="username" required placeholder="Email" class="w-full p-3 rounded-xl border border-gray-200">
+          <input id="adminPassword" type="password" autocomplete="current-password" required placeholder="Password" class="w-full p-3 rounded-xl border border-gray-200">
+          <button class="w-full bg-blue-600 text-white font-bold rounded-xl p-3" type="submit">Accedi</button>
+          <button id="resetPasswordBtn" type="button" class="text-sm text-blue-600">Password dimenticata?</button>
+        </form>
+        <form id="pinForm" class="space-y-3 hidden">
+          <input id="adminPin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" required placeholder="PIN di 6 cifre" class="w-full text-center tracking-[.35em] text-xl p-3 rounded-xl border border-gray-200">
+          <input id="adminPinConfirm" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" placeholder="Ripeti il PIN" class="w-full text-center tracking-[.25em] p-3 rounded-xl border border-gray-200 hidden">
+          <button id="pinSubmit" type="submit" class="w-full bg-blue-600 text-white font-bold rounded-xl p-3">Sblocca</button>
+          <button id="changeAccountBtn" type="button" class="text-sm text-blue-600">Accedi con email / Reimposta PIN</button>
+        </form>
+        <p id="accessError" role="alert" class="text-xs text-red-600"></p>
+      </div>
+    </div>
+
     <!-- Sync Banner -->
     <div id="cloudSyncBanner" class="fixed left-0 w-full bg-blue-600 text-white text-xs font-semibold text-center py-1.5 z-50 banner-visible shadow-md flex justify-center items-center gap-2">
         <i class="fa-solid fa-cloud-arrow-up animate-bounce"></i> <span id="syncText">Sincronizzazione in corso...</span>
@@ -500,7 +523,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // TUS CREDENCIALES DE FIREBASE (NO TOCAR)
@@ -524,19 +547,89 @@
         let attendance = {}; 
         let currentEditingPlayerId = null;
 
-        window.onload = async () => {
-            initUI();
-            setupEventListeners();
-            
-            try {
-                await signInAnonymously(auth);
-                initCloudData();
-            } catch (error) {
-                console.error("Auth Error:", error);
-                document.getElementById('syncText').textContent = "Errore di connessione";
-                document.getElementById('cloudSyncBanner').classList.replace('bg-blue-600', 'bg-red-500');
-            }
+        // PIN locale: PBKDF2 con salt casuale. Non sostituisce le regole Firestore.
+        const overlay = document.getElementById('accessOverlay');
+        const emailForm = document.getElementById('emailLoginForm');
+        const pinForm = document.getElementById('pinForm');
+        const errorEl = document.getElementById('accessError');
+        let currentUser = null, cloudStarted = false, setupPin = false;
+        let failedPins = 0, lockedUntil = 0, resetRequested = false;
+        const pinKey = uid => `aretusa-pin-v1-${uid}`;
+        const bytesHex = a => [...a].map(x=>x.toString(16).padStart(2,'0')).join('');
+        const hexBytes = hex => new Uint8Array(hex.match(/.{2}/g).map(x=>parseInt(x,16)));
+        async function pinHash(pin,salt) {
+            const base = await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveBits']);
+            const bits = await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:180000,hash:'SHA-256'},base,256);
+            return bytesHex(new Uint8Array(bits));
+        }
+        function showEmail() {
+            overlay.classList.remove('hidden'); emailForm.classList.remove('hidden');
+            pinForm.classList.add('hidden'); errorEl.textContent='';
+            document.getElementById('accessDescription').textContent='Accedi con la tua email amministratore';
+        }
+        function showPin(user) {
+            currentUser=user; setupPin=!localStorage.getItem(pinKey(user.uid));
+            overlay.classList.remove('hidden'); emailForm.classList.add('hidden'); pinForm.classList.remove('hidden');
+            document.getElementById('adminPin').value='';
+            document.getElementById('adminPinConfirm').value='';
+            document.getElementById('adminPinConfirm').classList.toggle('hidden',!setupPin);
+            document.getElementById('adminPinConfirm').required=setupPin;
+            document.getElementById('pinSubmit').textContent=setupPin?'Imposta PIN':'Sblocca';
+            document.getElementById('accessDescription').textContent=setupPin?'Crea il tuo PIN di 6 cifre':'Inserisci il PIN per continuare';
+            errorEl.textContent='';
+        }
+        function unlock() {
+            overlay.classList.add('hidden');
+            if(!cloudStarted) {cloudStarted=true;initCloudData();}
+        }
+        window.onload = () => {
+            initUI();setupEventListeners();
+            onAuthStateChanged(auth, user => {
+                if(user && !user.isAnonymous) showPin(user);
+                else showEmail();
+            }, e => {showEmail();errorEl.textContent=e.message;});
         };
+        emailForm.addEventListener('submit',async e=>{
+            e.preventDefault();errorEl.textContent='';
+            try {
+                const credential=await signInWithEmailAndPassword(auth,document.getElementById('adminEmail').value.trim(),document.getElementById('adminPassword').value);
+                if(resetRequested) {localStorage.removeItem(pinKey(credential.user.uid));resetRequested=false;}
+                showPin(credential.user);
+            } catch(err) {errorEl.textContent='Accesso non riuscito. Controlla email, password e autorizzazione.';}
+        });
+        document.getElementById('resetPasswordBtn').addEventListener('click',async()=>{
+            const email=document.getElementById('adminEmail').value.trim();
+            if(!email){errorEl.textContent='Inserisci prima la tua email.';return;}
+            try {await sendPasswordResetEmail(auth,email);errorEl.textContent='Controlla la tua email per reimpostare la password.';}
+            catch(e){errorEl.textContent='Impossibile inviare il messaggio. Riprova.';}
+        });
+        pinForm.addEventListener('submit',async e=>{
+            e.preventDefault();errorEl.textContent='';
+            if(Date.now()<lockedUntil){errorEl.textContent='Troppi tentativi. Riprova tra qualche minuto.';return;}
+            const pin=document.getElementById('adminPin').value;
+            if(!/^[0-9]{6}$/.test(pin)){errorEl.textContent='Inserisci 6 cifre.';return;}
+            try {
+                if(setupPin){
+                    if(pin!==document.getElementById('adminPinConfirm').value){errorEl.textContent='I PIN non coincidono.';return;}
+                    const salt=crypto.getRandomValues(new Uint8Array(16));
+                    const hash=await pinHash(pin,salt);
+                    localStorage.setItem(pinKey(currentUser.uid),JSON.stringify({salt:bytesHex(salt),hash}));
+                } else {
+                    const saved=JSON.parse(localStorage.getItem(pinKey(currentUser.uid)));
+                    if(await pinHash(pin,hexBytes(saved.salt))!==saved.hash){
+                        failedPins++;
+                        if(failedPins>=5){lockedUntil=Date.now()+5*60*1000;failedPins=0;}
+                        errorEl.textContent='PIN errato.';return;
+                    }
+                }
+                failedPins=0;unlock();
+            }catch(err){errorEl.textContent='Errore di sicurezza del dispositivo. Usa HTTPS.';}
+        });
+        document.getElementById('changeAccountBtn').addEventListener('click',async()=>{
+            // Reimpostazione PIN richiede un nuovo accesso email/password.
+            resetRequested=true;
+            await signOut(auth);cloudStarted=false;showEmail();
+        });
 
         const getPlayersPath = () => `players`; 
         const getAttendancePath = () => `attendance`; 
@@ -560,7 +653,7 @@
                 populateTeamSelectors();
                 renderViews();
                 hideSyncBanner();
-            });
+            }, err => {console.error("Firestore players:",err);document.getElementById("syncText").textContent="Accesso Firestore negato: controlla le regole";document.getElementById("cloudSyncBanner").classList.replace("bg-blue-600","bg-red-500");});
 
             // Listen for Attendance Collection
             onSnapshot(collection(db, getAttendancePath()), async (snapshot) => {
@@ -569,7 +662,7 @@
                     attendance[doc.id] = doc.data().records || {};
                 });
                 renderViews();
-            });
+            }, err => {console.error("Firestore attendance:",err);showToast("Errore caricamento presenze: controlla le regole","error");});
         }
 
         function hideSyncBanner() {
