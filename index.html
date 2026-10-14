@@ -419,7 +419,12 @@
                 <h2 class="text-xl font-bold text-gray-900">Dashboard Squadre</h2>
                 <span class="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-1 rounded-full" id="totalPlayersBadge">0 Giocatori</span>
             </div>
-            <div id="teamsDashboardContainer" class="grid grid-cols-1 gap-4 pb-4">
+            <section class="bg-white rounded-2xl border border-blue-100 p-4 space-y-3 shadow-sm">
+<div class="flex items-center gap-3"><div class="bg-blue-50 text-blue-600 rounded-xl p-3"><i class="fa-solid fa-file-export"></i></div><div><h3 class="font-extrabold">Relazione per la presidenza</h3><p class="text-xs text-gray-500">Schede giocatori, contatti e presenze</p></div></div>
+<div class="grid grid-cols-2 gap-2"><label class="text-xs font-semibold text-gray-600">Periodo<select id="reportPeriod" class="w-full mt-1 p-2.5 bg-gray-50 border rounded-xl"><option value="season">Stagione attuale</option><option value="all">Tutto lo storico</option><option value="month">Mese selezionato</option></select></label><label class="text-xs font-semibold text-gray-600">Squadre<select id="reportTeam" class="w-full mt-1 p-2.5 bg-gray-50 border rounded-xl"><option value="ALL">Tutte le squadre</option></select></label></div>
+<div class="grid grid-cols-2 gap-2"><button type="button" onclick="exportPresidentPDF()" class="rounded-xl bg-blue-600 text-white font-bold py-3"><i class="fa-solid fa-file-pdf mr-1"></i> PDF</button><button type="button" onclick="exportPresidentExcel()" class="rounded-xl bg-emerald-600 text-white font-bold py-3"><i class="fa-solid fa-file-excel mr-1"></i> Excel</button></div>
+<p class="text-[11px] text-gray-500">Rosso: nessuna presenza nel periodo. Il simbolo — indica nessuna convocazione registrata. Contiene numeri dei tutori: condividere solo con persone autorizzate.</p>
+</section>\n             <div id="teamsDashboardContainer" class="grid grid-cols-1 gap-4 pb-4">
                 <!-- Populated by JS -->
             </div>
         </div>
@@ -845,6 +850,9 @@
             teamSelect.value = currentAppello || '';
             historyTeamSelect.value = currentStorico || 'ALL';
             if(rosterTeamSelect) rosterTeamSelect.value = currentRoster || 'ALL';
+            const reportTeam=document.getElementById('reportTeam');
+            if(reportTeam) { const prev=reportTeam.value; reportTeam.innerHTML='<option value="ALL">Tutte le squadre</option>'; teams.filter(Boolean).forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;reportTeam.appendChild(o);});reportTeam.value=teams.includes(prev)?prev:'ALL'; }
+
         }
 
         function setupEventListeners() {
@@ -1592,6 +1600,77 @@
             }
             reader.readAsDataURL(file);
         }
+
+
+        // Relazione direzionale: nessuna scrittura su Firebase, solo dati già caricati.
+        const reportEsc = value => String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        function reportData() {
+            const period=document.getElementById('reportPeriod').value;
+            const team=document.getElementById('reportTeam').value;
+            const b=getSeasonBounds();
+            const month=document.getElementById('yearSelector').value+'-'+document.getElementById('monthSelector').value;
+            const dates=Object.keys(attendance).filter(d=>period==='all'||(period==='month'?d.startsWith(month):d>=b.start&&d<=b.end)).sort();
+            const label=period==='all'?'Storico completo':period==='month'?month:'Stagione '+b.label;
+            const roster=players.filter(p=>team==='ALL'||p.team===team).slice().sort((a,b)=>String(a.team||'').localeCompare(String(b.team||''),'it')||String(a.surname||a.cognome||'').localeCompare(String(b.surname||b.cognome||''),'it'));
+            const groups=new Map();
+            roster.forEach(p=>{
+                let present=0,absent=0;
+                dates.forEach(d=>{const st=attendance[d]?.[p.id];if(st==='present')present++;if(st==='absent')absent++;});
+                const n=present+absent;
+                const item={team:p.team||'Senza squadra',name:[p.name||p.nome,p.surname||p.cognome].filter(Boolean).join(' ')||'Senza nome',birth:p.birth||p.dataNascita||'',guardian:p.genitore||'',phone:p.telefono||'',present,absent,registered:n,rate:n?Math.round(present/n*100):null,never:present===0};
+                if(!groups.has(item.team))groups.set(item.team,[]);
+                groups.get(item.team).push(item);
+            });
+            return {groups,label,team,dates};
+        }
+        window.exportPresidentPDF=function(){
+            const {groups,label,dates}=reportData();
+            if(!groups.size){showToast('Nessun giocatore da esportare','error');return;}
+            const all=[...groups.values()].flat(),p=all.reduce((a,x)=>a+x.present,0),a=all.reduce((a,x)=>a+x.absent,0);
+            const today=new Date().toLocaleDateString('it-IT');
+            const sheets=[...groups].map(([team,items])=>{
+                const tp=items.reduce((a,x)=>a+x.present,0),ta=items.reduce((a,x)=>a+x.absent,0);
+                return `<section class="team"><div class="team-title"><h2>${reportEsc(team)}</h2><span>${items.length} giocatori · ${tp} presenze · ${ta} assenze · ${tp+ta?Math.round(tp/(tp+ta)*100)+'%':'—'}</span></div>
+                <div class="cards">${items.map(x=>`<article class="player ${x.never?'zero':''}"><div class="player-head"><strong>${reportEsc(x.name)}</strong>${x.never?'<span class="alert">0 PRESENZE</span>':''}</div>
+                <div class="details"><span><b>Tutore:</b> ${reportEsc(x.guardian||'Non indicato')}</span><span><b>Telefono:</b> ${reportEsc(x.phone||'Non indicato')}</span>${x.birth?`<span><b>Nascita:</b> ${reportEsc(x.birth)}</span>`:''}</div>
+                <div class="numbers"><span class="ok">Presenti <b>${x.present}</b></span><span class="bad">Assenti <b>${x.absent}</b></span><span>Convocazioni <b>${x.registered}</b></span><span>Frequenza <b>${x.rate===null?'—':x.rate+'%'}</b></span></div>
+                ${x.registered===0?'<p class="note">Nessuna convocazione registrata nel periodo.</p>':''}</article>`).join('')}</div></section>`;
+            }).join('');
+            const html=`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Relazione Presenze ${reportEsc(label)}</title><style>
+            @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#172033;font-size:11px;margin:0}header{border-bottom:3px solid #1958a8;padding-bottom:14px;margin-bottom:16px}h1{font-size:23px;margin:0 0 7px;color:#143b70}h2{font-size:16px;margin:0}.sub{color:#64748b}.summary{display:flex;gap:8px;margin:16px 0}.summary div{flex:1;background:#f1f5f9;padding:12px;border-radius:8px}.summary b{display:block;font-size:18px;color:#1d4ed8;margin-top:4px}.team{break-before:page}.team:first-of-type{break-before:auto}.team-title{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #dbeafe;padding:8px 0;margin-bottom:12px}.team-title span{font-size:10px;color:#64748b}.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}.player{border:1px solid #d9e2ed;border-left:4px solid #1d4ed8;border-radius:9px;padding:11px;break-inside:avoid;min-height:126px}.player.zero{border-left-color:#dc2626;background:#fff4f4}.player-head{display:flex;justify-content:space-between;gap:4px;font-size:12px}.alert{color:#b91c1c;font-size:9px;font-weight:bold;white-space:nowrap}.details{display:grid;gap:4px;margin:10px 0;color:#475569}.numbers{display:grid;grid-template-columns:1fr 1fr;gap:5px;border-top:1px solid #e2e8f0;padding-top:8px}.numbers span{display:flex;justify-content:space-between;background:#f8fafc;padding:5px;border-radius:4px}.numbers .ok{color:#047857}.numbers .bad{color:#b91c1c}.note{color:#b91c1c;font-size:9px;margin:7px 0 0}footer{margin-top:20px;font-size:9px;color:#64748b}@media print{button{display:none!important}}
+            </style></head><body><header><h1>ASD PALLAMANO ARETUSA</h1><b>Relazione presenze e anagrafica giocatori</b><p class="sub">${reportEsc(label)} · Generato il ${reportEsc(today)}</p></header>
+            <div class="summary"><div>Squadre<b>${groups.size}</b></div><div>Giocatori<b>${all.length}</b></div><div>Presenze<b>${p}</b></div><div>Assenze<b>${a}</b></div><div>Frequenza<b>${p+a?Math.round(p/(p+a)*100)+'%':'—'}</b></div></div>
+            <p class="sub">Periodo: ${reportEsc(label)} · Giorni con registrazioni: ${dates.length}. La frequenza considera solo Presente e Assente; senza registrazione non equivale ad assenza. Rosso = nessuna presenza registrata nel periodo.</p>
+            ${sheets}<footer>Documento riservato alla dirigenza. Contiene recapiti personali di tutori; evitare la diffusione non autorizzata.</footer></body></html>`;
+            const blob=new Blob([html],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob);
+            const w=window.open(url,'_blank');
+            if(!w){showToast('Consenti i popup per stampare il PDF','error');URL.revokeObjectURL(url);return;}
+            showToast('Apri Stampa → Salva come PDF');
+            setTimeout(()=>URL.revokeObjectURL(url),60000);
+        };
+        window.exportPresidentExcel=async function(){
+            const {groups,label}=reportData();
+            if(!groups.size){showToast('Nessun giocatore da esportare','error');return;}
+            if(!window.XLSX){
+                try{await new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=resolve;sc.onerror=reject;document.head.appendChild(sc);});}
+                catch(e){showToast('Serve internet per creare Excel','error');return;}
+            }
+            const headers=['Squadra','Giocatore','Tutore','Telefono tutore','Data nascita','Presenze','Assenze','Convocazioni','Frequenza %','Nessuna presenza'];
+            const book=XLSX.utils.book_new(),rows=[headers],totals=[];
+            [...groups].forEach(([team,items])=>{
+                items.forEach(x=>{const row=[x.team,x.name,x.guardian,x.phone,x.birth,x.present,x.absent,x.registered,x.rate===null?'':x.rate,x.never?'SI':'NO'];rows.push(row);totals.push(x);});
+                const sheet=XLSX.utils.aoa_to_sheet([headers,...items.map(x=>[x.team,x.name,x.guardian,x.phone,x.birth,x.present,x.absent,x.registered,x.rate===null?'':x.rate,x.never?'SI':'NO'])]);
+                sheet['!cols']=[{wch:18},{wch:30},{wch:27},{wch:21},{wch:17},{wch:13},{wch:13},{wch:17},{wch:15},{wch:20}];
+                XLSX.utils.book_append_sheet(book,sheet,(''+team).replace(/[\\/*?:[\]]/g,' ').slice(0,31)||'Squadra');
+            });
+            const summary=XLSX.utils.aoa_to_sheet([['ARETUSA - RELAZIONE PRESENZE'],['Periodo',label],['Squadre',groups.size],['Giocatori',totals.length],['Presenze',totals.reduce((s,x)=>s+x.present,0)],['Assenze',totals.reduce((s,x)=>s+x.absent,0)],['Nota','0 presenze non significa necessariamente assenza: verificare le convocazioni.']]);
+            summary['!cols']=[{wch:28},{wch:75}];
+            XLSX.utils.book_append_sheet(book,summary,'Riepilogo');
+            const sheet=XLSX.utils.aoa_to_sheet(rows);sheet['!cols']=[{wch:18},{wch:30},{wch:27},{wch:21},{wch:17},{wch:13},{wch:13},{wch:17},{wch:15},{wch:20}];
+            XLSX.utils.book_append_sheet(book,sheet,'Tutti i giocatori');
+            XLSX.writeFile(book,'Aretusa_Relazione_Presenze_'+new Date().toISOString().slice(0,10)+'.xlsx');
+            showToast('Excel generato');
+        };
 
         window.exportToCSV = function() {
             const month = document.getElementById('monthSelector').options[document.getElementById('monthSelector').selectedIndex].text;
