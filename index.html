@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aretusa Presenze Pro 4.0</title>
+    <title>Aretusa Presenze Pro 4.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -431,9 +431,9 @@
  <div class="flex justify-between items-center"><span class="text-xs font-bold text-slate-600">Categorie da includere</span><button type="button" onclick="toggleDiaryTeams(true)" class="text-xs text-blue-600 font-bold">Tutte</button><button type="button" onclick="toggleDiaryTeams(false)" class="text-xs text-slate-500 font-bold">Nessuna</button></div>
  <div id="diaryTeamChoices" class="grid grid-cols-2 gap-2 text-xs"></div>
  <p class="text-xs text-gray-500">Seleziona più categorie e un intervallo di mesi. — significa nessuna registrazione.</p>
- <div class="border border-indigo-200 rounded-2xl p-3 bg-indigo-50/70 space-y-3"><h4 class="font-extrabold text-indigo-900">🔒 Link privato per la presidenza</h4><div class="grid grid-cols-2 gap-2"><label class="text-xs font-bold">Password del report<input id="sharePassword" type="password" autocomplete="new-password" placeholder="Minimo 12 caratteri" class="w-full mt-1 p-2 rounded-xl border" /></label><label class="text-xs font-bold">Scadenza<select id="shareExpiry" class="w-full mt-1 p-2 rounded-xl border"><option value="1">24 ore</option><option value="7" selected>7 giorni</option><option value="30">30 giorni</option></select></label></div><button type="button" onclick="createPrivateReport()" class="w-full bg-indigo-700 text-white font-bold py-3 rounded-xl">🔗 Genera link privato</button><div id="shareResult" class="text-xs break-all"></div><div class="flex justify-between items-center"><b class="text-xs">Link attivi</b><button type="button" onclick="loadPrivateReports()" class="text-xs font-bold text-indigo-700">Aggiorna</button></div><div id="shareLinks" class="text-xs space-y-2"></div><p class="text-[11px] text-slate-600">La password viene verificata dal server. Condividi password e link separatamente. I dati condivisi sono una fotografia del momento della creazione.</p></div>
 <div id="diaryPreview" class="space-y-2 text-sm"></div>
  <button onclick="openDiaryWeb()" class="w-full bg-slate-900 text-white rounded-xl py-3 font-bold"><i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Apri relazione web / Condividi</button><div class="grid grid-cols-2 gap-2"><button onclick="exportDiaryPDF()" class="bg-indigo-600 text-white rounded-xl py-3 font-bold"><i class="fa-solid fa-file-pdf mr-1"></i> Diario PDF</button><button onclick="exportDiaryExcel()" class="bg-emerald-600 text-white rounded-xl py-3 font-bold"><i class="fa-solid fa-file-excel mr-1"></i> Diario Excel</button></div>
+<button type="button" onclick="exportFullBackup()" class="w-full bg-slate-700 text-white rounded-xl py-3 font-bold"><i class="fa-solid fa-database mr-1"></i> Esporta tutti i dati completi (JSON)</button>
 </section>
              <div id="teamsDashboardContainer" class="grid grid-cols-1 gap-4 pb-4">
                 <!-- Populated by JS -->
@@ -548,6 +548,7 @@
                     </div>
                 </div>
 
+                <label class="flex items-center gap-3 bg-slate-900 text-white rounded-2xl p-3"><input type="checkbox" id="playerInactive" class="w-5 h-5 accent-red-500"><span class="text-sm"><b>Giocatore inattivo / non frequenta</b><br><small class="text-slate-300">Resta in archivio, in nero, escluso dai conteggi e dagli appelli futuri.</small></span></label>
                 <div class="pt-6 flex gap-3">
                     <button type="button" id="deletePlayerBtn" onclick="deletePlayer()" class="hidden w-14 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center"><i class="fa-solid fa-trash-can"></i></button>
                     <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 transition-transform active:scale-95 shadow-md flex justify-center items-center gap-2">
@@ -907,7 +908,7 @@
             const date = document.getElementById('attendanceDate').value;
             if(!team || !date) return;
 
-            const teamPlayers = players.filter(p => p.team === team);
+            const teamPlayers = players.filter(p => p.team === team && !p.inactive);
             if (!attendance[date]) attendance[date] = {};
 
             teamPlayers.forEach(p => {
@@ -974,7 +975,7 @@
 
         function getDateStats(date, teamFilter = 'ALL') {
             const records = attendance[date] || {};
-            const filtered = teamFilter === 'ALL' ? players : players.filter(p => p.team === teamFilter);
+            const filtered = players.filter(p => !p.inactive && (teamFilter === 'ALL' || p.team === teamFilter));
             let present = 0, absent = 0, none = 0;
             filtered.forEach(p => {
                 const status = records[p.id] || 'none';
@@ -1121,7 +1122,7 @@
             if(el('seasonProgressFill')) el('seasonProgressFill').style.width=rate+'%';
             if(el('seasonProgressText')) el('seasonProgressText').textContent=registered?`${present} presenze su ${registered} convocazioni registrate`:'Nessun dato stagionale.';
 
-            const ranking=players.filter(p=>p.team && p.team!=='DA ASSEGNARE').map(p=>({...p, ...getSeasonPlayerStats(p,teamFilter)})).filter(p=>p.registered).sort((a,b)=>b.rate-a.rate || b.present-a.present || (a.surname||'').localeCompare(b.surname||'')).slice(0,8);
+            const ranking=players.filter(p=>!p.inactive && p.team && p.team!=='DA ASSEGNARE').map(p=>({...p, ...getSeasonPlayerStats(p,teamFilter)})).filter(p=>p.registered).sort((a,b)=>b.rate-a.rate || b.present-a.present || (a.surname||'').localeCompare(b.surname||'')).slice(0,8);
             const box=el('seasonRanking');
             if(box){ box.innerHTML=''; ranking.forEach((p,i)=>{
                 const row=document.createElement('button'); row.className='w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 text-left'; row.onclick=()=>window.openPlayerModal(p.id);
@@ -1293,7 +1294,7 @@
                 const card = document.createElement('div');
                 const isDaAssegnare = player.team === "DA ASSEGNARE";
                 
-                card.className = `bg-white p-3 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border ${isDaAssegnare ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-100'} flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors relative overflow-hidden`;
+                card.className = `${player.inactive?'bg-slate-950 text-white border-slate-700':'bg-white'} p-3 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border ${isDaAssegnare ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-100'} flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors relative overflow-hidden`;
                 card.onclick = () => window.openPlayerModal(player.id);
                 
                 const avatarDiv = document.createElement('div');
@@ -1315,7 +1316,7 @@
 
                 infoDiv.innerHTML = `
                     <div class="flex items-center gap-2">
-                        <p class="font-bold text-gray-900 leading-tight">${player.surname} ${player.name}</p>
+                        <p class="font-bold ${player.inactive?'text-white':'text-gray-900'} leading-tight">${player.surname} ${player.name}</p>${player.inactive?'<span class="text-[10px] font-bold bg-slate-700 text-white rounded px-2 py-1">INATTIVO</span>':''}
                         ${player.isNew ? '<span class="bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded badge-new">NUOVO</span>' : ''}
                     </div>
                     <p class="text-xs font-semibold ${isDaAssegnare ? 'text-yellow-600' : 'text-blue-600'} mt-0.5">${player.team}${entryDateStr}</p>
@@ -1351,10 +1352,10 @@
         function renderSquadreDashboard() {
             const container = document.getElementById('teamsDashboardContainer');
             container.innerHTML = '';
-            document.getElementById('totalPlayersBadge').innerText = `${players.length} Giocatori`;
+            document.getElementById('totalPlayersBadge').innerText = `${players.filter(p=>!p.inactive).length} Attivi`;
 
             const teamsMap = {};
-            players.forEach(p => {
+            players.filter(p=>!p.inactive).forEach(p => {
                 if(!teamsMap[p.team]) teamsMap[p.team] = [];
                 teamsMap[p.team].push(p);
             });
@@ -1459,13 +1460,15 @@
                 document.getElementById('playerPhone').value = player.telefono || '';
                 document.getElementById('playerBirth').value = player.dataNascita || '';
                 document.getElementById('playerEntry').value = player.dataIscrizione || '';
+                document.getElementById('playerInactive').checked = player.inactive === true;
                 
                 deleteBtn.classList.remove('hidden');
             } else {
                 title.textContent = 'Aggiungi Giocatore';
                 document.getElementById('editPlayerId').value = '';
                 document.getElementById('editPlayerIsNew').value = 'false';
-                document.getElementById('playerEntry').value = new Date().toISOString().split('T')[0]; 
+                document.getElementById('playerEntry').value = new Date().toISOString().split('T')[0];
+                document.getElementById('playerInactive').checked = false; 
                 deleteBtn.classList.add('hidden');
             }
 
@@ -1490,6 +1493,7 @@
             const phone = document.getElementById('playerPhone').value.trim();
             const birth = document.getElementById('playerBirth').value;
             const entry = document.getElementById('playerEntry').value;
+            const inactive = document.getElementById('playerInactive').checked;
 
             if(!name || !surname || !team) return;
 
@@ -1505,7 +1509,8 @@
                     telefono: phone,
                     dataNascita: birth,
                     dataIscrizione: entry,
-                    isNew: isNewStr === 'true'
+                    isNew: isNewStr === 'true',
+                    inactive
                 };
             } else {
                 playerObj = {
@@ -1518,6 +1523,7 @@
                     dataNascita: birth,
                     dataIscrizione: entry,
                     photo: null,
+                    inactive,
                     isNew: false
                 };
             }
@@ -1652,7 +1658,7 @@
             const end=document.getElementById('diaryMonthEnd').value||month;
             const from=month<=end?month:end,to=month<=end?end:month;
             const selected=new Set([...document.querySelectorAll('.diaryTeamCheck:checked')].map(x=>x.value));
-            const roster=players.filter(p=>selected.has(p.team||'Senza squadra')).slice().sort((a,b)=>String(a.team||'').localeCompare(String(b.team||''),'it')||String(a.surname||'').localeCompare(String(b.surname||''),'it')||String(a.name||'').localeCompare(String(b.name||''),'it'));
+            const roster=players.filter(p=>!p.inactive && selected.has(p.team||'Senza squadra')).slice().sort((a,b)=>String(a.team||'').localeCompare(String(b.team||''),'it')||String(a.surname||'').localeCompare(String(b.surname||''),'it')||String(a.name||'').localeCompare(String(b.name||''),'it'));
             const ids=new Set(roster.map(p=>p.id));
             const dates=Object.keys(attendance).filter(d=>d.slice(0,7)>=from&&d.slice(0,7)<=to&&Object.entries(attendance[d]||{}).some(([id,st])=>ids.has(id)&&(st==='present'||st==='absent'))).sort();
             const rows=roster.map(p=>{
@@ -1682,7 +1688,7 @@
             const daily=d.dates.map((date,i)=>{const pres=d.rows.filter(r=>r.statuses[i]==='present'),abs=d.rows.filter(r=>r.statuses[i]==='absent');return `<section class="day"><h3>${reportEsc(new Date(date+'T12:00:00').toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'}))} · ${pres.length} presenti / ${abs.length} assenti</h3><div class="cols"><div><b class="yes">PRESENTI (${pres.length})</b><p>${pres.map(x=>reportEsc(x.name)).join(', ')||'Nessuno'}</p></div><div><b class="no">ASSENTI (${abs.length})</b><p>${abs.map(x=>reportEsc(x.name)).join(', ')||'Nessuno'}</p></div></div></section>`;}).join('');
             const tp=d.rows.reduce((n,r)=>n+r.present,0),ta=d.rows.reduce((n,r)=>n+r.absent,0);
             return `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aretusa · Diario ${reportEsc(d.month)}</title><style>
-            *{box-sizing:border-box}body{font:13px system-ui,Arial,sans-serif;background:#f1f5f9;color:#1e293b;margin:0;padding:24px}main{max-width:1100px;margin:auto;background:white;padding:30px;border-radius:20px;box-shadow:0 12px 40px #0f172a12}h1{color:#1d4ed8;margin-bottom:4px}h2{font-size:17px;color:#1e40af;border-bottom:2px solid #dbeafe;padding-bottom:6px}h3{font-size:13px;margin-bottom:7px}.sub{color:#64748b}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}.toolbar button{border:0;border-radius:10px;background:#1d4ed8;color:white;padding:12px 17px;font-weight:bold;cursor:pointer}.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #cbd5e1;padding:7px 5px;text-align:center}th:first-child,td:first-child{text-align:left;min-width:140px;position:sticky;left:0;background:#fff}th{background:#dbeafe!important}.yes{color:#047857;font-weight:bold}.no{color:#dc2626;font-weight:bold}.blank{color:#94a3b8}.zero{background:#fee2e2;color:#991b1b}.day{break-inside:avoid;border:1px solid #cbd5e1;padding:12px;margin:12px 0;border-radius:9px}.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}.cols p{line-height:1.6}.note{font-size:11px;color:#64748b}@page{size:A4 landscape;margin:12mm}@media print{body{background:white;padding:0}main{padding:0;box-shadow:none}.toolbar{display:none}.team{break-before:page}.team:first-of-type{break-before:auto}.day{break-inside:avoid}.scroll{overflow:visible}table{font-size:9px}th,td{padding:4px 2px}th:first-child,td:first-child{position:static;min-width:110px}}
+            *{box-sizing:border-box}html,body{min-height:100%;width:100%}body{font:14px system-ui,Arial,sans-serif;background:#f1f5f9;color:#1e293b;margin:0;padding:12px}main{width:100%;max-width:none;min-height:calc(100vh - 24px);margin:0;background:white;padding:clamp(14px,3vw,36px);border-radius:18px;box-shadow:0 12px 40px #0f172a12}h1{color:#1d4ed8;margin-bottom:4px}h2{font-size:17px;color:#1e40af;border-bottom:2px solid #dbeafe;padding-bottom:6px}h3{font-size:13px;margin-bottom:7px}.sub{color:#64748b}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}.toolbar button{border:0;border-radius:10px;background:#1d4ed8;color:white;padding:12px 17px;font-weight:bold;cursor:pointer}.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #cbd5e1;padding:7px 5px;text-align:center}th:first-child,td:first-child{text-align:left;min-width:140px;position:sticky;left:0;background:#fff}th{background:#dbeafe!important}.yes{color:#047857;font-weight:bold}.no{color:#dc2626;font-weight:bold}.blank{color:#94a3b8}.zero{background:#fee2e2;color:#991b1b}.day{break-inside:avoid;border:1px solid #cbd5e1;padding:12px;margin:12px 0;border-radius:9px}.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:600px){body{padding:0}main{border-radius:0;min-height:100vh}.cols{grid-template-columns:1fr}.scroll{overflow-x:auto}.day{padding:10px}}.cols p{line-height:1.6}.note{font-size:11px;color:#64748b}@page{size:A4 landscape;margin:12mm}@media print{body{background:white;padding:0}main{padding:0;box-shadow:none}.toolbar{display:none}.team{break-before:page}.team:first-of-type{break-before:auto}.day{break-inside:avoid}.scroll{overflow:visible}table{font-size:9px}th,td{padding:4px 2px}th:first-child,td:first-child{position:static;min-width:110px}}
             </style></head><body><main><h1>ASD PALLAMANO ARETUSA · DIARIO PRESENZE</h1><p class="sub">Periodo: ${reportEsc(d.month)} · Categorie: ${reportEsc(d.team)} · ${d.dates.length} giornate · ${tp} presenze · ${ta} assenze · Frequenza: ${tp+ta?Math.round(tp/(tp+ta)*100)+'%':'—'}</p>
             <div class="toolbar"><button onclick="window.print()">Stampa / Salva PDF</button><button onclick="navigator.share?navigator.share({title:document.title,text:'Relazione presenze Aretusa'}).catch(()=>{}):alert('Salva questa pagina in PDF per condividerla')">Condividi</button></div>
             <p class="note">✓ presente · ✕ assente · — nessuna registrazione. Rosso: 0 presenze nel periodo.</p>${diaryTable(d)}<h2>Diario per giornata: nominativi</h2>${daily}<p class="note">Documento riservato alla dirigenza. Contiene dati personali; non pubblicare senza autorizzazione.</p></main></body></html>`;
@@ -1693,31 +1699,13 @@
             w.document.open();w.document.write(buildDiaryHTML(d));w.document.close();
         }
 
-        window.createPrivateReport=async function(){
-            const password=document.getElementById('sharePassword').value;
-            if(password.length<12){showToast('Password di almeno 12 caratteri','error');return;}
-            const d=diaryData();if(!d.dates.length){showToast('Nessuna giornata da condividere','error');return;}
-            const target=document.getElementById('shareResult');target.textContent='Creazione in corso...';
-            try{
-                const token=await auth.currentUser.getIdToken();
-                const r=await fetch('/api/reports',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({password,expiresDays:Number(document.getElementById('shareExpiry').value),report:d})});
-                const data=await r.json();if(!r.ok)throw Error(data.error||'Errore');
-                const url=new URL('/report.html?id='+encodeURIComponent(data.id),location.origin).href;
-                target.innerHTML='';const inp=document.createElement('input');inp.value=url;inp.readOnly=true;inp.className='w-full border rounded-lg p-2 bg-white';target.append(inp);
-                const copy=document.createElement('button');copy.textContent='📋 Copia link';copy.className='mt-2 bg-white border rounded-lg p-2 font-bold';copy.onclick=()=>navigator.clipboard.writeText(url).then(()=>showToast('Link copiato')).catch(()=>prompt('Copia link:',url));target.append(copy);
-                document.getElementById('sharePassword').value='';loadPrivateReports();
-            }catch(e){target.textContent='Errore: '+e.message;}
+
+        window.exportFullBackup=function(){
+            if(!confirm('Esportare la copia completa di tutti i giocatori (anche inattivi), contatti e tutto lo storico presenze? Il file contiene dati personali: conservalo in modo sicuro.'))return;
+            const payload={format:'Aretusa-Presenze-backup',version:1,exportedAt:new Date().toISOString(),players:players.map(p=>({...p})),attendance:JSON.parse(JSON.stringify(attendance))};
+            const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});
+            const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='Aretusa_Backup_Completo_'+getLocalISODate()+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);showToast('Backup completo esportato');
         };
-        window.loadPrivateReports=async function(){
-            const root=document.getElementById('shareLinks');try{
-                const token=await auth.currentUser.getIdToken();const r=await fetch('/api/reports',{headers:{Authorization:'Bearer '+token}});const data=await r.json();if(!r.ok)throw Error(data.error);
-                root.innerHTML='';for(const x of data.items){const div=document.createElement('div');div.className='bg-white p-2 rounded-xl flex justify-between items-center gap-2';
-                const txt=document.createElement('span');txt.textContent=x.label+' · '+(x.revoked?'Revocato':new Date(x.expiresAt).toLocaleDateString('it-IT'));div.append(txt);
-                if(!x.revoked){const btn=document.createElement('button');btn.textContent='Revoca';btn.className='text-red-600 font-bold';btn.onclick=()=>revokePrivateReport(x.id);div.append(btn);}root.append(div);}
-                if(!data.items.length)root.textContent='Nessun link creato.';
-            }catch(e){root.textContent='Link non disponibili: '+e.message;}
-        };
-        window.revokePrivateReport=async function(id){if(!confirm('Revocare questo link?'))return;try{const token=await auth.currentUser.getIdToken();const r=await fetch('/api/reports',{method:'DELETE',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({id})});if(!r.ok)throw Error('Revoca non riuscita');loadPrivateReports();}catch(e){showToast(e.message,'error');}};
 
         window.openDiaryWeb=openDiaryWindow;
         window.exportDiaryPDF=openDiaryWindow;
