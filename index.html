@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aretusa Presenze Pro 4.5.1</title>
+    <title>Aretusa Presenze Pro 4.5.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -585,7 +585,9 @@
 
         // State
         let players = [];
-        let attendance = {}; 
+        let attendance = {};
+        const isInactive=p=>p?.inactive===true||p?.inactive==='true'||p?.active===false||p?.attivo===false;
+        const isActive=p=>!isInactive(p); 
         let currentEditingPlayerId = null;
 
         // PIN locale: PBKDF2 con salt casuale. Non sostituisce le regole Firestore.
@@ -908,7 +910,7 @@
             const date = document.getElementById('attendanceDate').value;
             if(!team || !date) return;
 
-            const teamPlayers = players.filter(p => p.team === team && !p.inactive);
+            const teamPlayers = players.filter(p => p.team === team && isActive(p));
             if (!attendance[date]) attendance[date] = {};
 
             teamPlayers.forEach(p => {
@@ -935,6 +937,7 @@
                 showToast("Giocatore salvato");
             } catch(e) {
                 console.error("Save Error:", e);
+                showToast('Errore salvataggio: '+(e?.message||'Firebase'),'error');
             }
         }
 
@@ -975,7 +978,7 @@
 
         function getDateStats(date, teamFilter = 'ALL') {
             const records = attendance[date] || {};
-            const filtered = players.filter(p => !p.inactive && (teamFilter === 'ALL' || p.team === teamFilter));
+            const filtered = players.filter(p => isActive(p) && (teamFilter === 'ALL' || p.team === teamFilter));
             let present = 0, absent = 0, none = 0;
             filtered.forEach(p => {
                 const status = records[p.id] || 'none';
@@ -1001,7 +1004,7 @@
             const ring=document.getElementById('dashRateRing'); if(ring){ ring.style.setProperty('--value', stats.rate+'%'); ring.querySelector('span').textContent=stats.rate+'%'; }
             document.getElementById('dashPresentTitle').textContent = new Date(date + 'T12:00:00').toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long'});
 
-            const allTeams = [...new Set(players.filter(p => !p.inactive).map(p => p.team).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+            const allTeams = [...new Set(players.filter(isActive).map(p => p.team).filter(Boolean))].sort((a,b) => a.localeCompare(b));
             const dashFilter=document.getElementById('dashboardTeamFilter');
             if(dashFilter){
                 const validFilter = teamFilter === 'ALL' || allTeams.includes(teamFilter) ? teamFilter : 'ALL';
@@ -1012,7 +1015,7 @@
             /* squadre visibili nel riepilogo */
             const teamsForCards = teams;
             /* mantenimento del comportamento precedente */
-            const teamsOriginal = [...new Set(players.filter(p => !p.inactive).map(p => p.team).filter(Boolean))].sort((a,b) => {
+            const teamsOriginal = [...new Set(players.filter(isActive).map(p => p.team).filter(Boolean))].sort((a,b) => {
                 if (a === 'DA ASSEGNARE') return -1;
                 if (b === 'DA ASSEGNARE') return 1;
                 return a.localeCompare(b);
@@ -1034,7 +1037,7 @@
 
             const presentList = document.getElementById('dashboardPresentList');
             presentList.innerHTML = '';
-            const presentPlayers = players.filter(p => !p.inactive && (effectiveTeamFilter === 'ALL' || p.team === effectiveTeamFilter) && (attendance[date] || {})[p.id] === 'present').sort((a,b) => (a.surname || '').localeCompare(b.surname || ''));
+            const presentPlayers = players.filter(p => isActive(p) && (effectiveTeamFilter === 'ALL' || p.team === effectiveTeamFilter) && (attendance[date] || {})[p.id] === 'present').sort((a,b) => (a.surname || '').localeCompare(b.surname || ''));
             presentPlayers.forEach(p => {
                 const row = document.createElement('button');
                 row.className = 'w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 text-left';
@@ -1122,7 +1125,7 @@
             if(el('seasonProgressFill')) el('seasonProgressFill').style.width=rate+'%';
             if(el('seasonProgressText')) el('seasonProgressText').textContent=registered?`${present} presenze su ${registered} convocazioni registrate`:'Nessun dato stagionale.';
 
-            const ranking=players.filter(p=>!p.inactive && p.team && p.team!=='DA ASSEGNARE').map(p=>({...p, ...getSeasonPlayerStats(p,teamFilter)})).filter(p=>p.registered).sort((a,b)=>b.rate-a.rate || b.present-a.present || (a.surname||'').localeCompare(b.surname||'')).slice(0,8);
+            const ranking=players.filter(p=>isActive(p) && p.team && p.team!=='DA ASSEGNARE').map(p=>({...p, ...getSeasonPlayerStats(p,teamFilter)})).filter(p=>p.registered).sort((a,b)=>b.rate-a.rate || b.present-a.present || (a.surname||'').localeCompare(b.surname||'')).slice(0,8);
             const box=el('seasonRanking');
             if(box){ box.innerHTML=''; ranking.forEach((p,i)=>{
                 const row=document.createElement('button'); row.className='w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 text-left'; row.onclick=()=>window.openPlayerModal(p.id);
@@ -1230,7 +1233,7 @@
             tbody.innerHTML = '';
             const targetPrefix = `${year}-${month}`;
 
-            const targetPlayers = players.filter(p => !p.inactive && (teamFilter === 'ALL' || p.team === teamFilter));
+            const targetPlayers = players.filter(p => isActive(p) && (teamFilter === 'ALL' || p.team === teamFilter));
 
             targetPlayers.forEach(player => {
                 let presences = 0;
@@ -1292,7 +1295,7 @@
                 const card = document.createElement('div');
                 const isDaAssegnare = player.team === "DA ASSEGNARE";
                 
-                card.className = `${player.inactive?'bg-slate-950 text-white border-slate-700':'bg-white'} p-3 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border ${isDaAssegnare ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-100'} flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors relative overflow-hidden`;
+                card.className = `${isInactive(player)?'bg-slate-950 text-white border-slate-700':'bg-white'} p-3 rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border ${isDaAssegnare ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-100'} flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors relative overflow-hidden`;
                 card.onclick = () => window.openPlayerModal(player.id);
                 
                 const avatarDiv = document.createElement('div');
@@ -1314,7 +1317,7 @@
 
                 infoDiv.innerHTML = `
                     <div class="flex items-center gap-2">
-                        <p class="font-bold ${player.inactive?'text-white':'text-gray-900'} leading-tight">${player.surname} ${player.name}</p>${player.inactive?'<span class="text-[10px] font-bold bg-slate-700 text-white rounded px-2 py-1">INATTIVO</span>':''}
+                        <p class="font-bold ${isInactive(player)?'text-white':'text-gray-900'} leading-tight">${player.surname} ${player.name}</p>${isInactive(player)?'<span class="text-[10px] font-bold bg-slate-700 text-white rounded px-2 py-1">INATTIVO</span>':''}
                         ${player.isNew ? '<span class="bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded badge-new">NUOVO</span>' : ''}
                     </div>
                     <p class="text-xs font-semibold ${isDaAssegnare ? 'text-yellow-600' : 'text-blue-600'} mt-0.5">${player.team}${entryDateStr}</p>
@@ -1324,16 +1327,22 @@
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'flex gap-2 z-10';
 
+                const toggleBtn=document.createElement('button');
+                toggleBtn.type='button';
+                toggleBtn.className=isInactive(player)?'w-10 h-10 rounded-full bg-green-100 text-green-800 flex items-center justify-center':'w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center';
+                toggleBtn.title=isInactive(player)?'Riattiva giocatore':'Disattiva giocatore';
+                toggleBtn.setAttribute('aria-label',toggleBtn.title);
+                toggleBtn.innerHTML=isInactive(player)?'<i class="fa-solid fa-rotate-left"></i>':'<i class="fa-solid fa-user-slash"></i>';
+                toggleBtn.onclick=(event)=>{event.stopPropagation();window.togglePlayerInactive(player.id);};
+                actionsDiv.appendChild(toggleBtn);
                 if (player.telefono) {
                     let waPhone = player.telefono.replace(/\s+/g, '');
                     if (!waPhone.startsWith('+')) waPhone = '+39' + waPhone;
 
-                    actionsDiv.innerHTML = `
+                    actionsDiv.insertAdjacentHTML('beforeend', `
                         <a href="tel:${player.telefono}" onclick="event.stopPropagation()" class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 shadow-sm transition-transform active:scale-95"><i class="fa-solid fa-phone"></i></a>
                         <a href="https://wa.me/${waPhone}" target="_blank" onclick="event.stopPropagation()" class="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 shadow-sm transition-transform active:scale-95"><i class="fa-brands fa-whatsapp text-lg"></i></a>
-                    `;
-                } else {
-                    actionsDiv.innerHTML = `<div class="w-10 h-10 flex items-center justify-center text-gray-300"><i class="fa-solid fa-chevron-right"></i></div>`;
+                    `);
                 }
 
                 card.appendChild(avatarDiv);
@@ -1350,10 +1359,10 @@
         function renderSquadreDashboard() {
             const container = document.getElementById('teamsDashboardContainer');
             container.innerHTML = '';
-            document.getElementById('totalPlayersBadge').innerText = `${players.filter(p=>!p.inactive).length} Attivi`;
+            document.getElementById('totalPlayersBadge').innerText = `${players.filter(isActive).length} Attivi`;
 
             const teamsMap = {};
-            players.filter(p=>!p.inactive).forEach(p => {
+            players.filter(isActive).forEach(p => {
                 if(!teamsMap[p.team]) teamsMap[p.team] = [];
                 teamsMap[p.team].push(p);
             });
@@ -1458,7 +1467,7 @@
                 document.getElementById('playerPhone').value = player.telefono || '';
                 document.getElementById('playerBirth').value = player.dataNascita || '';
                 document.getElementById('playerEntry').value = player.dataIscrizione || '';
-                document.getElementById('playerInactive').checked = player.inactive === true;
+                document.getElementById('playerInactive').checked = isInactive(player);
                 
                 deleteBtn.classList.remove('hidden');
             } else {
@@ -1508,7 +1517,9 @@
                     dataNascita: birth,
                     dataIscrizione: entry,
                     isNew: isNewStr === 'true',
-                    inactive
+                    inactive,
+                    active:!inactive,
+                    attivo:!inactive
                 };
             } else {
                 playerObj = {
@@ -1522,12 +1533,23 @@
                     dataIscrizione: entry,
                     photo: null,
                     inactive,
+                    active:!inactive,
+                    attivo:!inactive,
                     isNew: false
                 };
             }
             savePlayerToCloud(playerObj);
         };
 
+        window.togglePlayerInactive=async function(id){
+            const p=players.find(x=>x.id===id);if(!p)return;
+            const inactive=!isInactive(p);
+            if(!confirm((inactive?'Disattivare':'Riattivare')+' '+(p.surname||'')+' '+(p.name||'')+'?'))return;
+            try{
+                await setDoc(doc(db,getPlayersPath(),p.id),{...p,inactive,active:!inactive,attivo:!inactive});
+                showToast(inactive?'Giocatore disattivato: escluso dagli appelli':'Giocatore riattivato');
+            }catch(e){console.error(e);showToast('Errore Firebase: '+(e?.message||'salvataggio'),'error');}
+        };
         window.deletePlayer = function() {
             const id = document.getElementById('editPlayerId').value;
             if(!id) return;
@@ -1656,7 +1678,7 @@
             const end=document.getElementById('diaryMonthEnd').value||month;
             const from=month<=end?month:end,to=month<=end?end:month;
             const selected=new Set([...document.querySelectorAll('.diaryTeamCheck:checked')].map(x=>x.value));
-            const roster=players.filter(p=>!p.inactive && selected.has(p.team||'Senza squadra')).slice().sort((a,b)=>String(a.team||'').localeCompare(String(b.team||''),'it')||String(a.surname||'').localeCompare(String(b.surname||''),'it')||String(a.name||'').localeCompare(String(b.name||''),'it'));
+            const roster=players.filter(p=>isActive(p) && selected.has(p.team||'Senza squadra')).slice().sort((a,b)=>String(a.team||'').localeCompare(String(b.team||''),'it')||String(a.surname||'').localeCompare(String(b.surname||''),'it')||String(a.name||'').localeCompare(String(b.name||''),'it'));
             const ids=new Set(roster.map(p=>p.id));
             const dates=Object.keys(attendance).filter(d=>d.slice(0,7)>=from&&d.slice(0,7)<=to&&Object.entries(attendance[d]||{}).some(([id,st])=>ids.has(id)&&(st==='present'||st==='absent'))).sort();
             const rows=roster.map(p=>{
