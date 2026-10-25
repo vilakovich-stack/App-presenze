@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aretusa Presenze Pro 4.5</title>
+    <title>Aretusa Presenze Pro 4.5.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -1001,7 +1001,7 @@
             const ring=document.getElementById('dashRateRing'); if(ring){ ring.style.setProperty('--value', stats.rate+'%'); ring.querySelector('span').textContent=stats.rate+'%'; }
             document.getElementById('dashPresentTitle').textContent = new Date(date + 'T12:00:00').toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long'});
 
-            const allTeams = [...new Set(players.map(p => p.team).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+            const allTeams = [...new Set(players.filter(p => !p.inactive).map(p => p.team).filter(Boolean))].sort((a,b) => a.localeCompare(b));
             const dashFilter=document.getElementById('dashboardTeamFilter');
             if(dashFilter){
                 const validFilter = teamFilter === 'ALL' || allTeams.includes(teamFilter) ? teamFilter : 'ALL';
@@ -1012,7 +1012,7 @@
             /* squadre visibili nel riepilogo */
             const teamsForCards = teams;
             /* mantenimento del comportamento precedente */
-            const teamsOriginal = [...new Set(players.map(p => p.team).filter(Boolean))].sort((a,b) => {
+            const teamsOriginal = [...new Set(players.filter(p => !p.inactive).map(p => p.team).filter(Boolean))].sort((a,b) => {
                 if (a === 'DA ASSEGNARE') return -1;
                 if (b === 'DA ASSEGNARE') return 1;
                 return a.localeCompare(b);
@@ -1034,7 +1034,7 @@
 
             const presentList = document.getElementById('dashboardPresentList');
             presentList.innerHTML = '';
-            const presentPlayers = players.filter(p => (effectiveTeamFilter === 'ALL' || p.team === effectiveTeamFilter) && (attendance[date] || {})[p.id] === 'present').sort((a,b) => (a.surname || '').localeCompare(b.surname || ''));
+            const presentPlayers = players.filter(p => !p.inactive && (effectiveTeamFilter === 'ALL' || p.team === effectiveTeamFilter) && (attendance[date] || {})[p.id] === 'present').sort((a,b) => (a.surname || '').localeCompare(b.surname || ''));
             presentPlayers.forEach(p => {
                 const row = document.createElement('button');
                 row.className = 'w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 text-left';
@@ -1174,7 +1174,7 @@
             }
 
             controls.classList.remove('hidden'); filters.classList.remove('hidden');
-            const teamPlayers = players.filter(p => p.team === team);
+            const teamPlayers = players.filter(p => p.team === team && !p.inactive);
             if (!attendance[date]) attendance[date] = {};
             const query = (document.getElementById('appelloSearch')?.value || '').trim().toLowerCase();
             let pres = 0, abs = 0, none = 0;
@@ -1230,9 +1230,7 @@
             tbody.innerHTML = '';
             const targetPrefix = `${year}-${month}`;
 
-            const targetPlayers = teamFilter === 'ALL' 
-                ? players 
-                : players.filter(p => p.team === teamFilter);
+            const targetPlayers = players.filter(p => !p.inactive && (teamFilter === 'ALL' || p.team === teamFilter));
 
             targetPlayers.forEach(player => {
                 let presences = 0;
