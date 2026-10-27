@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aretusa Presenze Pro 4.5.2</title>
+    <title>Aretusa Presenze Pro 4.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -527,6 +527,11 @@
                     <datalist id="teamOptions"></datalist>
                 </div>
 
+                <div class="rounded-2xl border border-blue-200 bg-blue-50 p-3 space-y-2">
+                    <label class="block text-xs font-bold text-blue-800 uppercase">Squadre di rinforzo (opzionale)</label>
+                    <p class="text-xs text-slate-600">Il giocatore resta nella categoria principale e appare come RINFORZO nelle altre. Puoi selezionare più squadre.</p>
+                    <div id="playerReinforcementOptions" class="grid grid-cols-2 gap-2 text-sm"></div>
+                </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Genitore / Tutore</label>
                     <input type="text" id="playerGenitore" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-medium focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all" placeholder="Nome del genitore">
@@ -587,7 +592,14 @@
         let players = [];
         let attendance = {};
         const isInactive=p=>p?.inactive===true||p?.inactive==='true'||p?.active===false||p?.attivo===false;
-        const isActive=p=>!isInactive(p); 
+        const isActive=p=>!isInactive(p);
+        const reinforces=(p,team)=>Array.isArray(p?.reinforcementTeams)&&p.reinforcementTeams.includes(team)&&p.team!==team;
+        const belongsToTeam=(p,team)=>p.team===team||reinforces(p,team);
+        const teamsForPlayer=p=>[...new Set([p.team,...(Array.isArray(p.reinforcementTeams)?p.reinforcementTeams:[])].filter(Boolean))];
+        // The primary team's historical key stays unchanged for compatibility.
+        const attendanceKey=(p,team)=>p.team===team?p.id:p.id+'__REF__'+encodeURIComponent(team);
+        const teamAttendance=(day,p,team)=>day?.[attendanceKey(p,team)]||'none';
+        const availableTeams=()=>[...new Set(players.flatMap(teamsForPlayer))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'it')); 
         let currentEditingPlayerId = null;
 
         // PIN locale: PBKDF2 con salt casuale. Non sostituisce le regole Firestore.
@@ -818,7 +830,7 @@
         }
 
         function populateTeamSelectors() {
-            const teams = [...new Set(players.map(p => p.team))].sort((a,b) => {
+            const teams = availableTeams().sort((a,b) => {
                 if (a === "DA ASSEGNARE") return -1;
                 if (b === "DA ASSEGNARE") return 1;
                 return a.localeCompare(b);
@@ -910,11 +922,11 @@
             const date = document.getElementById('attendanceDate').value;
             if(!team || !date) return;
 
-            const teamPlayers = players.filter(p => p.team === team && isActive(p));
+            const teamPlayers = players.filter(p => belongsToTeam(p,team) && isActive(p));
             if (!attendance[date]) attendance[date] = {};
 
             teamPlayers.forEach(p => {
-                attendance[date][p.id] = 'present';
+                attendance[date][attendanceKey(p,team)] = 'present';
             });
             renderAppelloList();
 
@@ -978,10 +990,10 @@
 
         function getDateStats(date, teamFilter = 'ALL') {
             const records = attendance[date] || {};
-            const filtered = players.filter(p => isActive(p) && (teamFilter === 'ALL' || p.team === teamFilter));
+            const filtered = players.filter(p => isActive(p) && (teamFilter === 'ALL' ? p.team : belongsToTeam(p,teamFilter)));
             let present = 0, absent = 0, none = 0;
             filtered.forEach(p => {
-                const status = records[p.id] || 'none';
+                const status = teamFilter==='ALL' ? (records[p.id]||'none') : teamAttendance(records,p,teamFilter);
                 if (status === 'present') present++;
                 else if (status === 'absent') absent++;
                 else none++;
@@ -1004,7 +1016,7 @@
             const ring=document.getElementById('dashRateRing'); if(ring){ ring.style.setProperty('--value', stats.rate+'%'); ring.querySelector('span').textContent=stats.rate+'%'; }
             document.getElementById('dashPresentTitle').textContent = new Date(date + 'T12:00:00').toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long'});
 
-            const allTeams = [...new Set(players.filter(isActive).map(p => p.team).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+            const allTeams = [...new Set(players.filter(isActive).flatMap(teamsForPlayer).filter(Boolean))].sort((a,b) => a.localeCompare(b));
             const dashFilter=document.getElementById('dashboardTeamFilter');
             if(dashFilter){
                 const validFilter = teamFilter === 'ALL' || allTeams.includes(teamFilter) ? teamFilter : 'ALL';
@@ -1015,7 +1027,7 @@
             /* squadre visibili nel riepilogo */
             const teamsForCards = teams;
             /* mantenimento del comportamento precedente */
-            const teamsOriginal = [...new Set(players.filter(isActive).map(p => p.team).filter(Boolean))].sort((a,b) => {
+            const teamsOriginal = [...new Set(players.filter(isActive).flatMap(teamsForPlayer).filter(Boolean))].sort((a,b) => {
                 if (a === 'DA ASSEGNARE') return -1;
                 if (b === 'DA ASSEGNARE') return 1;
                 return a.localeCompare(b);
@@ -1177,20 +1189,20 @@
             }
 
             controls.classList.remove('hidden'); filters.classList.remove('hidden');
-            const teamPlayers = players.filter(p => p.team === team && !p.inactive);
+            const teamPlayers = players.filter(p => belongsToTeam(p,team) && isActive(p));
             if (!attendance[date]) attendance[date] = {};
             const query = (document.getElementById('appelloSearch')?.value || '').trim().toLowerCase();
             let pres = 0, abs = 0, none = 0;
-            teamPlayers.forEach(p => { const st=attendance[date][p.id]||'none'; if(st==='present')pres++; else if(st==='absent')abs++; else none++; });
+            teamPlayers.forEach(p => { const st=teamAttendance(attendance[date],p,team); if(st==='present')pres++; else if(st==='absent')abs++; else none++; });
 
             let visible = teamPlayers.filter(player => {
-                const status = attendance[date][player.id] || 'none';
+                const status = teamAttendance(attendance[date],player,team);
                 const name = `${player.surname||''} ${player.name||''}`.toLowerCase();
                 return (appelloFilter==='all' || status===appelloFilter) && (!query || name.includes(query));
             });
             visible.sort((a,b)=>{
                 const rank={none:0,absent:1,present:2};
-                const ra=rank[attendance[date][a.id]||'none'], rb=rank[attendance[date][b.id]||'none'];
+                const ra=rank[teamAttendance(attendance[date],a,team)], rb=rank[teamAttendance(attendance[date],b,team)];
                 return ra-rb || (a.surname||'').localeCompare(b.surname||'');
             });
 
@@ -1206,7 +1218,7 @@
             }
 
             visible.forEach((player, idx) => {
-                const status=attendance[date][player.id]||'none';
+                const status=teamAttendance(attendance[date],player,team);
                 const card=document.createElement('div');
                 card.className=`player-row bg-white p-3 rounded-2xl shadow-[0_4px_18px_-10px_rgba(15,23,42,.22)] border ${status==='present'?'border-green-200 bg-green-50/30':status==='absent'?'border-red-200 bg-red-50/20':'border-gray-100'} flex items-center gap-3 lift`;
                 card.style.animationDelay=`${Math.min(idx,10)*25}ms`;
@@ -1216,10 +1228,10 @@
                 avatarDiv.innerHTML=player.photo?`<img src="${player.photo}" class="avatar-img" alt="${player.name}">`:getInitials(player.name,player.surname);
                 const infoDiv=document.createElement('div'); infoDiv.className='flex-1 min-w-0';
                 const label=status==='present'?'<span class="text-green-600">Presente</span>':status==='absent'?'<span class="text-red-500">Assente</span>':'<span class="text-gray-400">Da segnare</span>';
-                infoDiv.innerHTML=`<p class="font-bold text-gray-900 leading-tight truncate">${player.surname} ${player.name}</p><p class="text-[11px] font-semibold mt-1">${label}</p>`;
+                infoDiv.innerHTML=`<p class="font-bold text-gray-900 leading-tight truncate">${player.surname} ${player.name} ${reinforces(player,team)?'<span class="text-[10px] rounded-full bg-sky-100 text-sky-800 px-2 py-1">RINFORZO · '+player.team+'</span>':''}</p><p class="text-[11px] font-semibold mt-1">${label}</p>`;
                 const actionsDiv=document.createElement('div'); actionsDiv.className='flex gap-2';
-                const btnPresent=document.createElement('button'); btnPresent.className=`w-12 h-12 rounded-full border-2 flex items-center justify-center status-btn ${status==='present'?'status-present shadow-lg shadow-green-500/30':'status-none hover:bg-green-50 hover:text-green-600'}`; btnPresent.innerHTML='<i class="fa-solid fa-check text-lg"></i>'; btnPresent.onclick=()=>window.markAttendance(date,player.id,'present');
-                const btnAbsent=document.createElement('button'); btnAbsent.className=`w-12 h-12 rounded-full border-2 flex items-center justify-center status-btn ${status==='absent'?'status-absent shadow-lg shadow-red-500/30':'status-none hover:bg-red-50 hover:text-red-500'}`; btnAbsent.innerHTML='<i class="fa-solid fa-xmark text-lg"></i>'; btnAbsent.onclick=()=>window.markAttendance(date,player.id,'absent');
+                const btnPresent=document.createElement('button'); btnPresent.className=`w-12 h-12 rounded-full border-2 flex items-center justify-center status-btn ${status==='present'?'status-present shadow-lg shadow-green-500/30':'status-none hover:bg-green-50 hover:text-green-600'}`; btnPresent.innerHTML='<i class="fa-solid fa-check text-lg"></i>'; btnPresent.onclick=()=>window.markAttendance(date,attendanceKey(player,team),'present');
+                const btnAbsent=document.createElement('button'); btnAbsent.className=`w-12 h-12 rounded-full border-2 flex items-center justify-center status-btn ${status==='absent'?'status-absent shadow-lg shadow-red-500/30':'status-none hover:bg-red-50 hover:text-red-500'}`; btnAbsent.innerHTML='<i class="fa-solid fa-xmark text-lg"></i>'; btnAbsent.onclick=()=>window.markAttendance(date,attendanceKey(player,team),'absent');
                 actionsDiv.append(btnPresent,btnAbsent); card.append(avatarDiv,infoDiv,actionsDiv); container.appendChild(card);
             });
         }
@@ -1233,7 +1245,7 @@
             tbody.innerHTML = '';
             const targetPrefix = `${year}-${month}`;
 
-            const targetPlayers = players.filter(p => isActive(p) && (teamFilter === 'ALL' || p.team === teamFilter));
+            const targetPlayers = players.filter(p => isActive(p) && (teamFilter === 'ALL' || belongsToTeam(p,teamFilter)));
 
             targetPlayers.forEach(player => {
                 let presences = 0;
@@ -1241,7 +1253,7 @@
 
                 Object.keys(attendance).forEach(date => {
                     if (date.startsWith(targetPrefix)) {
-                        const status = attendance[date][player.id];
+                        const status = teamFilter==='ALL' ? attendance[date][player.id] : teamAttendance(attendance[date],player,teamFilter);
                         if (status === 'present') presences++;
                         if (status === 'absent') absences++;
                     }
@@ -1273,7 +1285,7 @@
 
             let targetPlayers = teamFilter === 'ALL' 
                 ? players 
-                : players.filter(p => p.team === teamFilter);
+                : players.filter(p => belongsToTeam(p,teamFilter));
 
             if (searchQuery) {
                 targetPlayers = targetPlayers.filter(p => 
@@ -1284,6 +1296,7 @@
 
             // Bring 'Da Assegnare' and 'New' to top
             targetPlayers.sort((a, b) => {
+                if(teamFilter!=='ALL' && reinforces(a,teamFilter)!==reinforces(b,teamFilter))return reinforces(a,teamFilter)?1:-1;
                 if (a.isNew && !b.isNew) return -1;
                 if (!a.isNew && b.isNew) return 1;
                 if (a.team === "DA ASSEGNARE" && b.team !== "DA ASSEGNARE") return -1;
@@ -1320,7 +1333,7 @@
                         <p class="font-bold ${isInactive(player)?'text-white':'text-gray-900'} leading-tight">${player.surname} ${player.name}</p>${isInactive(player)?'<span class="text-[10px] font-bold bg-slate-700 text-white rounded px-2 py-1">INATTIVO</span>':''}
                         ${player.isNew ? '<span class="bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded badge-new">NUOVO</span>' : ''}
                     </div>
-                    <p class="text-xs font-semibold ${isDaAssegnare ? 'text-yellow-600' : 'text-blue-600'} mt-0.5">${player.team}${entryDateStr}</p>
+                    <p class="text-xs font-semibold ${isDaAssegnare ? 'text-yellow-600' : 'text-blue-600'} mt-0.5">${player.team}${teamFilter!=='ALL'&&reinforces(player,teamFilter)?' · 🔁 RINFORZO IN '+teamFilter:''}${entryDateStr}</p><p class="text-[10px] font-semibold text-sky-700">${(player.reinforcementTeams||[]).length?'Rinforzo: '+player.reinforcementTeams.join(', '):''}</p>
                     ${player.genitore ? `<p class="text-[11px] text-gray-500 mt-0.5 font-medium"><i class="fa-solid fa-user-tie text-gray-400"></i> ${player.genitore}</p>` : ''}
                 `;
 
@@ -1363,8 +1376,10 @@
 
             const teamsMap = {};
             players.filter(isActive).forEach(p => {
-                if(!teamsMap[p.team]) teamsMap[p.team] = [];
-                teamsMap[p.team].push(p);
+                teamsForPlayer(p).forEach(team=>{
+                    if(!teamsMap[team])teamsMap[team]=[];
+                    teamsMap[team].push(p);
+                });
             });
 
             const sortedTeams = Object.keys(teamsMap).sort((a,b) => {
@@ -1376,6 +1391,8 @@
             sortedTeams.forEach(teamName => {
                 const teamRoster = teamsMap[teamName];
                 const isDaAssegnare = teamName === "DA ASSEGNARE";
+                const baseCount=teamRoster.filter(p=>p.team===teamName).length;
+                const reinforcementCount=teamRoster.length-baseCount;
                 
                 const card = document.createElement('button');
                 card.type='button';
@@ -1399,7 +1416,7 @@
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="font-bold text-gray-900 ${isDaAssegnare ? 'text-yellow-600' : ''}">${isDaAssegnare ? '⚠️ DA ASSEGNARE' : teamName}</h3>
-                        <span class="bg-gray-100 text-gray-600 text-xs font-bold px-2.5 py-1 rounded-full">${teamRoster.length}</span>
+                        <span class="bg-gray-100 text-gray-600 text-xs font-bold px-2.5 py-1 rounded-full">${teamRoster.length} · ${baseCount} propri${reinforcementCount?' + '+reinforcementCount+' rinforzi':''}</span>
                     </div>
                     <div class="flex items-center justify-between pt-2 gap-2">
                         <div class="flex items-center pl-3">${avatarsHtml}</div>
@@ -1445,6 +1462,19 @@
           document.getElementById('bottomNavigation').classList.remove('nav-collapsed');
         };
 
+        function renderReinforcementOptions(selected=[]){
+            const box=document.getElementById('playerReinforcementOptions');if(!box)return;
+            const primary=document.getElementById('playerTeam').value.trim().toUpperCase();
+            const choices=[...new Set([...availableTeams(),...selected])].filter(t=>t&&t!==primary);
+            box.innerHTML='';
+            for(const team of choices){
+                const label=document.createElement('label');
+                label.className='flex items-center gap-2 bg-white border border-blue-100 rounded-xl px-2 py-2';
+                const cb=document.createElement('input');cb.type='checkbox';cb.value=team;cb.checked=selected.includes(team);cb.className='reinforcement-choice w-4 h-4';
+                const span=document.createElement('span');span.textContent=team;label.append(cb,span);box.append(label);
+            }
+            if(!choices.length)box.innerHTML='<span class="text-xs text-slate-500">Crea prima le altre categorie nella sezione Giocatori.</span>';
+        }
         window.openPlayerModal = function(playerId = null) {
             const modal = document.getElementById('playerModal');
             const title = document.getElementById('playerModalTitle');
@@ -1468,6 +1498,7 @@
                 document.getElementById('playerBirth').value = player.dataNascita || '';
                 document.getElementById('playerEntry').value = player.dataIscrizione || '';
                 document.getElementById('playerInactive').checked = isInactive(player);
+                renderReinforcementOptions(player.reinforcementTeams||[]);
                 
                 deleteBtn.classList.remove('hidden');
             } else {
@@ -1475,7 +1506,8 @@
                 document.getElementById('editPlayerId').value = '';
                 document.getElementById('editPlayerIsNew').value = 'false';
                 document.getElementById('playerEntry').value = new Date().toISOString().split('T')[0];
-                document.getElementById('playerInactive').checked = false; 
+                document.getElementById('playerInactive').checked = false;
+                renderReinforcementOptions([]); 
                 deleteBtn.classList.add('hidden');
             }
 
@@ -1501,6 +1533,7 @@
             const birth = document.getElementById('playerBirth').value;
             const entry = document.getElementById('playerEntry').value;
             const inactive = document.getElementById('playerInactive').checked;
+            const reinforcementTeams=[...document.querySelectorAll('.reinforcement-choice:checked')].map(c=>c.value).filter(t=>t!==team);
 
             if(!name || !surname || !team) return;
 
@@ -1517,6 +1550,7 @@
                     dataNascita: birth,
                     dataIscrizione: entry,
                     isNew: isNewStr === 'true',
+                    reinforcementTeams,
                     inactive,
                     active:!inactive,
                     attivo:!inactive
@@ -1532,6 +1566,7 @@
                     dataNascita: birth,
                     dataIscrizione: entry,
                     photo: null,
+                    reinforcementTeams,
                     inactive,
                     active:!inactive,
                     attivo:!inactive,
@@ -1651,7 +1686,7 @@
             const month=document.getElementById('yearSelector').value+'-'+document.getElementById('monthSelector').value;
             const dates=Object.keys(attendance).filter(d=>period==='all'||(period==='month'?d.startsWith(month):d>=b.start&&d<=b.end)).sort();
             const label=period==='all'?'Storico completo':period==='month'?month:'Stagione '+b.label;
-            const roster=players.filter(p=>team==='ALL'||p.team===team).slice().sort((a,b)=>String(a.team||'').localeCompare(String(b.team||''),'it')||String(a.surname||a.cognome||'').localeCompare(String(b.surname||b.cognome||''),'it'));
+            const roster=players.filter(p=>team==='ALL'||belongsToTeam(p,team)).slice().sort((a,b)=>String(a.team||'').localeCompare(String(b.team||''),'it')||String(a.surname||a.cognome||'').localeCompare(String(b.surname||b.cognome||''),'it'));
             const groups=new Map();
             roster.forEach(p=>{
                 let present=0,absent=0;
@@ -1678,7 +1713,7 @@
             const end=document.getElementById('diaryMonthEnd').value||month;
             const from=month<=end?month:end,to=month<=end?end:month;
             const selected=new Set([...document.querySelectorAll('.diaryTeamCheck:checked')].map(x=>x.value));
-            const roster=players.filter(p=>isActive(p) && selected.has(p.team||'Senza squadra')).slice().sort((a,b)=>String(a.team||'').localeCompare(String(b.team||''),'it')||String(a.surname||'').localeCompare(String(b.surname||''),'it')||String(a.name||'').localeCompare(String(b.name||''),'it'));
+            const roster=players.filter(p=>isActive(p) && teamsForPlayer(p).some(t=>selected.has(t))).slice().sort((a,b)=>String(a.team||'').localeCompare(String(b.team||''),'it')||String(a.surname||'').localeCompare(String(b.surname||''),'it')||String(a.name||'').localeCompare(String(b.name||''),'it'));
             const ids=new Set(roster.map(p=>p.id));
             const dates=Object.keys(attendance).filter(d=>d.slice(0,7)>=from&&d.slice(0,7)<=to&&Object.entries(attendance[d]||{}).some(([id,st])=>ids.has(id)&&(st==='present'||st==='absent'))).sort();
             const rows=roster.map(p=>{
