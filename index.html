@@ -896,6 +896,8 @@
             document.getElementById('rosterTeamSelector').addEventListener('change', renderGiocatori);
             document.getElementById('playerSearchInput').addEventListener('input', renderGiocatori);
             document.getElementById('cameraInput').addEventListener('change', handlePhotoUpload);
+            document.getElementById('playerTeam').addEventListener('change',()=>renderReinforcementOptions([...document.querySelectorAll('.reinforcement-choice:checked')].map(el=>el.value)));
+
         }
 
         window.markAttendance = async function(date, playerId, status) {
@@ -1090,10 +1092,10 @@
         }
 
         function getSeasonPlayerStats(player, teamFilter='ALL') {
-            if (teamFilter !== 'ALL' && player.team !== teamFilter) return { present:0, absent:0, registered:0, rate:0 };
+            if (teamFilter !== 'ALL' && !belongsToTeam(player,teamFilter)) return { present:0, absent:0, registered:0, rate:0 };
             let present=0, absent=0;
             getAttendanceDatesInSeason().forEach(d => {
-                const st = (attendance[d] || {})[player.id];
+                const st = teamFilter==='ALL' ? (attendance[d]||{})[player.id] : teamAttendance(attendance[d],player,teamFilter);
                 if (st === 'present') present++;
                 else if (st === 'absent') absent++;
             });
@@ -1690,9 +1692,9 @@
             const groups=new Map();
             roster.forEach(p=>{
                 let present=0,absent=0;
-                dates.forEach(d=>{const st=attendance[d]?.[p.id];if(st==='present')present++;if(st==='absent')absent++;});
+                dates.forEach(d=>{const st=team==='ALL'?attendance[d]?.[p.id]:teamAttendance(attendance[d],p,team);if(st==='present')present++;if(st==='absent')absent++;});
                 const n=present+absent;
-                const item={team:p.team||'Senza squadra',name:[p.name||p.nome,p.surname||p.cognome].filter(Boolean).join(' ')||'Senza nome',birth:p.birth||p.dataNascita||'',guardian:p.genitore||'',phone:p.telefono||'',present,absent,registered:n,rate:n?Math.round(present/n*100):null,never:present===0};
+                const item={team:team==='ALL'?(p.team||'Senza squadra'):team,name:[p.name||p.nome,p.surname||p.cognome].filter(Boolean).join(' ')||'Senza nome',birth:p.birth||p.dataNascita||'',guardian:p.genitore||'',phone:p.telefono||'',present,absent,registered:n,rate:n?Math.round(present/n*100):null,never:present===0};
                 if(!groups.has(item.team))groups.set(item.team,[]);
                 groups.get(item.team).push(item);
             });
@@ -1704,7 +1706,7 @@
             const root=document.getElementById('diaryTeamChoices');if(!root)return;
             const checked=new Set([...root.querySelectorAll('input:checked')].map(x=>x.value));
             const wasEmpty=!root.querySelector('input');
-            const teams=[...new Set(players.map(p=>p.team||'Senza squadra'))].sort();
+            const teams=availableTeams();
             root.innerHTML=teams.map(t=>`<label class="flex items-center gap-2 bg-slate-50 border rounded-xl p-2"><input type="checkbox" class="diaryTeamCheck accent-blue-600" value="${reportEsc(t)}" ${wasEmpty||checked.has(t)?'checked':''} onchange="renderAttendanceDiary()"><span>${reportEsc(t)}</span></label>`).join('');
         }
         window.toggleDiaryTeams=function(on){document.querySelectorAll('.diaryTeamCheck').forEach(x=>x.checked=on);renderAttendanceDiary();};
@@ -1713,13 +1715,13 @@
             const end=document.getElementById('diaryMonthEnd').value||month;
             const from=month<=end?month:end,to=month<=end?end:month;
             const selected=new Set([...document.querySelectorAll('.diaryTeamCheck:checked')].map(x=>x.value));
-            const roster=players.filter(p=>isActive(p) && teamsForPlayer(p).some(t=>selected.has(t))).slice().sort((a,b)=>String(a.team||'').localeCompare(String(b.team||''),'it')||String(a.surname||'').localeCompare(String(b.surname||''),'it')||String(a.name||'').localeCompare(String(b.name||''),'it'));
-            const ids=new Set(roster.map(p=>p.id));
-            const dates=Object.keys(attendance).filter(d=>d.slice(0,7)>=from&&d.slice(0,7)<=to&&Object.entries(attendance[d]||{}).some(([id,st])=>ids.has(id)&&(st==='present'||st==='absent'))).sort();
-            const rows=roster.map(p=>{
-                const statuses=dates.map(d=>attendance[d]?.[p.id]||'none');
+            const members=players.filter(isActive).flatMap(p=>teamsForPlayer(p).filter(t=>selected.has(t)).map(t=>({p,team:t,key:attendanceKey(p,t)}))).sort((a,b)=>a.team.localeCompare(b.team,'it')||(a.p.surname||'').localeCompare(b.p.surname||'','it'));
+            const keys=new Set(members.map(m=>m.key));
+            const dates=Object.keys(attendance).filter(d=>d.slice(0,7)>=from&&d.slice(0,7)<=to&&Object.entries(attendance[d]||{}).some(([id,st])=>keys.has(id)&&(st==='present'||st==='absent'))).sort();
+            const rows=members.map(({p,team})=>{
+                const statuses=dates.map(d=>teamAttendance(attendance[d],p,team));
                 const present=statuses.filter(x=>x==='present').length,absent=statuses.filter(x=>x==='absent').length;
-                return {id:p.id,team:p.team||'Senza squadra',name:[p.name||p.nome,p.surname||p.cognome].filter(Boolean).join(' ')||'Senza nome',guardian:p.genitore||'',phone:p.telefono||'',statuses,present,absent,rate:present+absent?Math.round(100*present/(present+absent)):null};
+                return {id:p.id,team,name:[p.name||p.nome,p.surname||p.cognome].filter(Boolean).join(' ')||'Senza nome',reinforcement:team!==p.team,guardian:p.genitore||'',phone:p.telefono||'',statuses,present,absent,rate:present+absent?Math.round(100*present/(present+absent)):null};
             });
             return {month:from===to?from:from+' — '+to,from,to,team:[...selected].join(', '),dates,rows};
         }
@@ -1735,7 +1737,7 @@
             return groups.map(team=>{
                 const rows=d.rows.filter(r=>r.team===team);
                 const head=`<tr><th>Giocatore</th>${d.dates.map(x=>`<th>${reportEsc(x.slice(8,10))}/${reportEsc(x.slice(5,7))}</th>`).join('')}<th>P</th><th>A</th><th>%</th></tr>`;
-                const body=rows.map(r=>`<tr class="${r.present===0?'zero':''}"><td>${reportEsc(r.name)}</td>${r.statuses.map(st=>`<td class="${st==='present'?'yes':st==='absent'?'no':'blank'}">${st==='present'?'✓':st==='absent'?'✕':'—'}</td>`).join('')}<td>${r.present}</td><td>${r.absent}</td><td>${r.rate===null?'—':r.rate+'%'}</td></tr>`).join('');
+                const body=rows.map(r=>`<tr class="${r.present===0?'zero':''}"><td>${reportEsc(r.name)}${r.reinforcement?' <small class="yes">(RINFORZO)</small>':''}</td>${r.statuses.map(st=>`<td class="${st==='present'?'yes':st==='absent'?'no':'blank'}">${st==='present'?'✓':st==='absent'?'✕':'—'}</td>`).join('')}<td>${r.present}</td><td>${r.absent}</td><td>${r.rate===null?'—':r.rate+'%'}</td></tr>`).join('');
                 return `<section class="team"><h2>${reportEsc(team)}</h2><div class="scroll"><table><thead>${head}</thead><tbody>${body}</tbody></table></div></section>`;
             }).join('');
         }
@@ -1767,9 +1769,9 @@
         window.exportDiaryExcel=async function(){
             const d=diaryData();if(!d.dates.length){showToast('Nessuna giornata nel mese selezionato','error');return;}
             if(!window.XLSX){try{await new Promise((resolve,reject)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=resolve;sc.onerror=reject;document.head.appendChild(sc);});}catch(e){showToast('Serve internet per creare Excel','error');return;}}
-            const book=XLSX.utils.book_new();const header=['Squadra','Giocatore',...d.dates,'Presenze','Assenze','Frequenza %'];
-            const data=[header,...d.rows.map(r=>[r.team,r.name,...r.statuses.map(x=>x==='present'?'P':x==='absent'?'A':''),r.present,r.absent,r.rate===null?'':r.rate])];
-            const sheet=XLSX.utils.aoa_to_sheet(data);sheet['!cols']=[{wch:19},{wch:30},...d.dates.map(()=>({wch:13})),{wch:12},{wch:12},{wch:16}];sheet['!freeze']={xSplit:2,ySplit:1};XLSX.utils.book_append_sheet(book,sheet,'Matrice mensile');
+            const book=XLSX.utils.book_new();const header=['Squadra','Giocatore','Ruolo',...d.dates,'Presenze','Assenze','Frequenza %'];
+            const data=[header,...d.rows.map(r=>[r.team,r.name,r.reinforcement?'RINFORZO':'PROPRIO',...r.statuses.map(x=>x==='present'?'P':x==='absent'?'A':''),r.present,r.absent,r.rate===null?'':r.rate])];
+            const sheet=XLSX.utils.aoa_to_sheet(data);sheet['!cols']=[{wch:19},{wch:30},{wch:13},...d.dates.map(()=>({wch:13})),{wch:12},{wch:12},{wch:16}];sheet['!freeze']={xSplit:2,ySplit:1};XLSX.utils.book_append_sheet(book,sheet,'Matrice mensile');
             const diary=[['Data','Squadra','Presenti','Assenti','Nomi presenti','Nomi assenti']];
             d.dates.forEach((date,i)=>{[...new Set(d.rows.map(r=>r.team))].forEach(team=>{const rr=d.rows.filter(r=>r.team===team),pres=rr.filter(r=>r.statuses[i]==='present'),abs=rr.filter(r=>r.statuses[i]==='absent');if(pres.length+abs.length)diary.push([date,team,pres.length,abs.length,pres.map(x=>x.name).join(', '),abs.map(x=>x.name).join(', ')]);});});
             const ds=XLSX.utils.aoa_to_sheet(diary);ds['!cols']=[{wch:16},{wch:20},{wch:12},{wch:12},{wch:80},{wch:80}];XLSX.utils.book_append_sheet(book,ds,'Diario giornaliero');
