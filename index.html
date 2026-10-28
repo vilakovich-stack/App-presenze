@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aretusa Presenze Pro 4.8</title>
+    <title>Aretusa Presenze Pro 4.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -520,6 +520,20 @@
             <form id="playerForm" class="space-y-4" onsubmit="savePlayer(event)">
                 <input type="hidden" id="editPlayerId">
                 <input type="hidden" id="editPlayerIsNew">
+<div class="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-2xl p-3">
+  <div id="formPhotoPreview" class="shrink-0 w-20 h-20 rounded-full bg-blue-100 border-[3px] border-white flex items-center justify-center overflow-hidden text-blue-700"><i class="fa-solid fa-camera text-2xl"></i></div>
+  <div class="flex-1 min-w-0 space-y-2">
+    <p class="text-xs font-bold">Foto giocatore</p>
+    <div class="flex flex-wrap gap-1.5">
+      <button type="button" onclick="document.getElementById('formPhotoCamera').click()" class="bg-blue-700 text-white rounded-lg px-2.5 py-2 text-[11px] font-bold"><i class="fa-solid fa-camera"></i> Scatta foto</button>
+      <button type="button" onclick="document.getElementById('formPhotoGallery').click()" class="bg-white text-blue-700 border rounded-lg px-2.5 py-2 text-[11px] font-bold"><i class="fa-solid fa-image"></i> Carica foto</button>
+      <button type="button" id="formRemovePhoto" onclick="removePlayerFormPhoto()" class="hidden text-red-600 text-[11px] font-bold px-2 py-2">Rimuovi</button>
+    </div>
+    <p id="formPhotoHint" class="text-[10px] text-slate-500">Foto compressa automaticamente. Salva la scheda per confermare.</p>
+  </div>
+  <input id="formPhotoCamera" type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePlayerFormPhoto(event)">
+  <input id="formPhotoGallery" type="file" accept="image/*" class="hidden" onchange="handlePlayerFormPhoto(event)">
+</div>
                 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -624,6 +638,7 @@
         const teamAttendance=(day,p,team)=>day?.[attendanceKey(p,team)]||'none';
         const availableTeams=()=>[...new Set(players.flatMap(teamsForPlayer))].filter(Boolean).sort((a,b)=>a.localeCompare(b,'it')); 
         let currentEditingPlayerId = null;
+        let pendingPlayerPhoto = null;
 
         // PIN locale: PBKDF2 con salt casuale. Non sostituisce le regole Firestore.
         const overlay = document.getElementById('accessOverlay');
@@ -1508,6 +1523,38 @@
             }
             if(!choices.length)box.innerHTML='<span class="text-xs text-slate-500">Crea prima le altre categorie nella sezione Giocatori.</span>';
         }
+        function updateFormPhoto(){
+            const box=document.getElementById('formPhotoPreview'),remove=document.getElementById('formRemovePhoto');
+            box.replaceChildren();
+            if(pendingPlayerPhoto){
+                const img=document.createElement('img');img.src=pendingPlayerPhoto;
+                img.alt='Foto giocatore';img.className='w-full h-full object-cover';
+                box.append(img);remove.classList.remove('hidden');
+            }else{
+                const icon=document.createElement('i');icon.className='fa-solid fa-camera text-2xl';box.append(icon);
+                remove.classList.add('hidden');
+            }
+        }
+        window.removePlayerFormPhoto=function(){pendingPlayerPhoto=null;updateFormPhoto();};
+        window.handlePlayerFormPhoto=async function(event){
+            const file=event.target.files?.[0];if(!file)return;
+            event.target.value='';
+            if(file.type&&!file.type.startsWith('image/')){showToast('File non valido','error');return;}
+            if(file.size>15*1024*1024){showToast('Foto oltre 15 MB','error');return;}
+            const hint=document.getElementById('formPhotoHint');hint.textContent='Preparazione foto...';
+            try{
+                const src=await new Promise((resolve,reject)=>{const fr=new FileReader();fr.onload=()=>resolve(fr.result);fr.onerror=()=>reject(new Error('Lettura impossibile'));fr.readAsDataURL(file);});
+                const img=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(new Error('Foto non leggibile'));im.src=src;});
+                const canvas=document.createElement('canvas');canvas.width=320;canvas.height=320;
+                const ctx=canvas.getContext('2d');
+                const side=Math.min(img.naturalWidth,img.naturalHeight);
+                ctx.drawImage(img,(img.naturalWidth-side)/2,(img.naturalHeight-side)/2,side,side,0,0,320,320);
+                const result=canvas.toDataURL('image/jpeg',0.76);
+                if(result.length>800000)throw new Error('Immagine troppo grande');
+                pendingPlayerPhoto=result;updateFormPhoto();
+                hint.textContent='Foto pronta. Premi Salva Giocatore.';
+            }catch(e){hint.textContent='Errore: prova con una foto JPG o PNG.';showToast('Errore foto: '+e.message,'error');}
+        };
         window.openPlayerModal = function(playerId = null) {
             const modal = document.getElementById('playerModal');
             const title = document.getElementById('playerModalTitle');
@@ -1531,6 +1578,7 @@
                 document.getElementById('playerBirth').value = player.dataNascita || '';
                 document.getElementById('playerEntry').value = player.dataIscrizione || '';
                 document.getElementById('playerInactive').checked = isInactive(player);
+                pendingPlayerPhoto=player.photo||null;
                 renderReinforcementOptions(player.reinforcementTeams||[]);
                 
                 deleteBtn.classList.remove('hidden');
@@ -1540,10 +1588,12 @@
                 document.getElementById('editPlayerIsNew').value = 'false';
                 document.getElementById('playerEntry').value = new Date().toISOString().split('T')[0];
                 document.getElementById('playerInactive').checked = false;
+                pendingPlayerPhoto=null;
                 renderReinforcementOptions([]); 
                 deleteBtn.classList.add('hidden');
             }
 
+            updateFormPhoto();
             modal.classList.remove('hidden');
             // Animate in
             setTimeout(() => { modal.firstElementChild.style.transform = 'translateY(0)'; }, 10);
@@ -1575,6 +1625,7 @@
                 const existing = players.find(p => p.id === id);
                 playerObj = {
                     ...existing,
+                    photo:pendingPlayerPhoto,
                     name: name,
                     surname: surname,
                     team: team,
@@ -1598,7 +1649,7 @@
                     telefono: phone,
                     dataNascita: birth,
                     dataIscrizione: entry,
-                    photo: null,
+                    photo:pendingPlayerPhoto,
                     reinforcementTeams,
                     inactive,
                     active:!inactive,
