@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aretusa Presenze Pro 4.6</title>
+    <title>Aretusa Presenze Pro 4.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -404,6 +404,13 @@
                 </div>
             </div>
 
+            <div class="flex items-center gap-2 mt-2">
+                <label for="rosterBirthYear" class="text-xs font-bold text-slate-600 whitespace-nowrap">Anno di nascita</label>
+                <select id="rosterBirthYear" class="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-semibold">
+                    <option value="ALL">Tutti gli anni</option>
+                </select>
+                <span id="rosterResultCount" class="text-xs font-bold text-blue-600 whitespace-nowrap"></span>
+            </div>
             <div id="rosterList" class="space-y-3 mt-4 pb-4">
                 <!-- Populated by JS -->
             </div>
@@ -593,6 +600,18 @@
         let attendance = {};
         const isInactive=p=>p?.inactive===true||p?.inactive==='true'||p?.active===false||p?.attivo===false;
         const isActive=p=>!isInactive(p);
+        const playerBirthYear=p=>{
+            const birth=p?.dataNascita||p?.birth||'';
+            const year=String(birth).match(/^\d{4}/)?.[0];
+            return year && Number(year)>=1900 && Number(year)<=new Date().getFullYear()?year:'';
+        };
+        function populateBirthYearFilter(){
+            const el=document.getElementById('rosterBirthYear');if(!el)return;
+            const previous=el.value||'ALL';
+            const years=[...new Set(players.map(playerBirthYear).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+            el.innerHTML='<option value="ALL">Tutti gli anni</option>'+years.map(y=>'<option value="'+y+'">'+y+'</option>').join('')+'<option value="UNKNOWN">Anno non indicato</option>';
+            el.value=years.includes(previous)||previous==='UNKNOWN'?previous:'ALL';
+        }
         const reinforces=(p,team)=>Array.isArray(p?.reinforcementTeams)&&p.reinforcementTeams.includes(team)&&p.team!==team;
         const belongsToTeam=(p,team)=>p.team===team||reinforces(p,team);
         const teamsForPlayer=p=>[...new Set([p.team,...(Array.isArray(p.reinforcementTeams)?p.reinforcementTeams:[])].filter(Boolean))];
@@ -757,6 +776,7 @@
                 if (badge) badge.classList.toggle('hidden', !hasNew);
 
                 populateTeamSelectors();
+                populateBirthYearFilter();
                 renderViews();
                 playersLoaded=true;
                 syncReady();
@@ -894,6 +914,7 @@
             document.getElementById('historyTeamSelector').addEventListener('change', renderStorico);
 
             document.getElementById('rosterTeamSelector').addEventListener('change', renderGiocatori);
+            document.getElementById('rosterBirthYear').addEventListener('change',renderGiocatori);
             document.getElementById('playerSearchInput').addEventListener('input', renderGiocatori);
             document.getElementById('cameraInput').addEventListener('change', handlePhotoUpload);
             document.getElementById('playerTeam').addEventListener('change',()=>renderReinforcementOptions([...document.querySelectorAll('.reinforcement-choice:checked')].map(el=>el.value)));
@@ -1282,6 +1303,7 @@
         function renderGiocatori() {
             const teamFilter = document.getElementById('rosterTeamSelector').value;
             const searchQuery = (document.getElementById('playerSearchInput').value || '').toLowerCase();
+            const birthYearFilter=document.getElementById('rosterBirthYear')?.value||'ALL';
             const container = document.getElementById('rosterList');
             container.innerHTML = '';
 
@@ -1289,6 +1311,9 @@
                 ? players 
                 : players.filter(p => belongsToTeam(p,teamFilter));
 
+            if(birthYearFilter!=='ALL'){
+                targetPlayers=targetPlayers.filter(p=>birthYearFilter==='UNKNOWN'?!playerBirthYear(p):playerBirthYear(p)===birthYearFilter);
+            }
             if (searchQuery) {
                 targetPlayers = targetPlayers.filter(p => 
                     (p.name && p.name.toLowerCase().includes(searchQuery)) || 
@@ -1296,6 +1321,7 @@
                 );
             }
 
+            const count=document.getElementById('rosterResultCount');if(count)count.textContent=targetPlayers.length+' giocatori';
             // Bring 'Da Assegnare' and 'New' to top
             targetPlayers.sort((a, b) => {
                 if(teamFilter!=='ALL' && reinforces(a,teamFilter)!==reinforces(b,teamFilter))return reinforces(a,teamFilter)?1:-1;
@@ -1335,7 +1361,7 @@
                         <p class="font-bold ${isInactive(player)?'text-white':'text-gray-900'} leading-tight">${player.surname} ${player.name}</p>${isInactive(player)?'<span class="text-[10px] font-bold bg-slate-700 text-white rounded px-2 py-1">INATTIVO</span>':''}
                         ${player.isNew ? '<span class="bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded badge-new">NUOVO</span>' : ''}
                     </div>
-                    <p class="text-xs font-semibold ${isDaAssegnare ? 'text-yellow-600' : 'text-blue-600'} mt-0.5">${player.team}${teamFilter!=='ALL'&&reinforces(player,teamFilter)?' · 🔁 RINFORZO IN '+teamFilter:''}${entryDateStr}</p><p class="text-[10px] font-semibold text-sky-700">${(player.reinforcementTeams||[]).length?'Rinforzo: '+player.reinforcementTeams.join(', '):''}</p>
+                    <p class="text-xs font-semibold ${isDaAssegnare ? 'text-yellow-600' : 'text-blue-600'} mt-0.5">${player.team} · ${playerBirthYear(player)||'Anno n/d'}${teamFilter!=='ALL'&&reinforces(player,teamFilter)?' · 🔁 RINFORZO IN '+teamFilter:''}${entryDateStr}</p><p class="text-[10px] font-semibold text-sky-700">${(player.reinforcementTeams||[]).length?'Rinforzo: '+player.reinforcementTeams.join(', '):''}</p>
                     ${player.genitore ? `<p class="text-[11px] text-gray-500 mt-0.5 font-medium"><i class="fa-solid fa-user-tie text-gray-400"></i> ${player.genitore}</p>` : ''}
                 `;
 
