@@ -1868,24 +1868,32 @@
             const w=window.open('','_blank');
             if(!w){showToast('Abilita le finestre popup per aprire la rosa','error');return;}
             const unique=new Set(rosters.flatMap(g=>g.members.map(p=>p.id))).size;
-            const sections=rosters.map(g=>{
+            const MAX_ROSTER_PER_PAGE=27;
+            const sections=rosters.flatMap(g=>{
                 const own=g.members.filter(p=>p.team===g.team).length;
                 const refs=g.members.length-own;
-                const cards=g.members.map(p=>{
-                    const yr=playerBirthYear(p)||'n/d';
-                    const ref=reinforces(p,g.team);
-                    const url=rosterPhoto(p.photo);
-                    return '<article class="player">'+
-                      (url?'<img class="avatar" src="'+rosterSafe(url)+'" alt="Foto giocatore">':'<div class="avatar placeholder">'+rosterSafe(getInitials(p.name,p.surname))+'</div>')+
-                      '<div class="info"><strong>'+rosterSafe((p.surname||'')+' '+(p.name||''))+'</strong>'+
-                      '<span>'+rosterSafe(g.team)+' · '+rosterSafe(yr)+'</span>'+
-                      (ref?'<small class="reinforce">RINFORZO DA '+rosterSafe(p.team)+'</small>':'<small class="base">SQUADRA PRINCIPALE</small>')+
-                      '</div></article>';
-                }).join('');
-                return '<section class="team"><div class="teamhead"><h2>'+rosterSafe(g.team)+'</h2><span>'+g.members.length+' giocatori · '+own+' propri'+(refs?' · '+refs+' rinforzi':'')+'</span></div><div class="players">'+cards+'</div></section>';
+                const pages=[];
+                for(let offset=0;offset<g.members.length;offset+=MAX_ROSTER_PER_PAGE){
+                    const members=g.members.slice(offset,offset+MAX_ROSTER_PER_PAGE);
+                    const currentPage=Math.floor(offset/MAX_ROSTER_PER_PAGE)+1;
+                    const totalPages=Math.ceil(g.members.length/MAX_ROSTER_PER_PAGE);
+                    const cards=members.map(p=>{
+                        const yr=playerBirthYear(p)||'n/d';
+                        const ref=reinforces(p,g.team);
+                        const url=rosterPhoto(p.photo);
+                        return '<article class="player">'+
+                          (url?'<img class="avatar" src="'+rosterSafe(url)+'" alt="Foto giocatore">':'<div class="avatar placeholder">'+rosterSafe(getInitials(p.name,p.surname))+'</div>')+
+                          '<div class="info"><strong>'+rosterSafe((p.surname||'')+' '+(p.name||''))+'</strong>'+
+                          '<span>'+rosterSafe(g.team)+' · '+rosterSafe(yr)+'</span>'+
+                          (ref?'<small class="reinforce">RINFORZO DA '+rosterSafe(p.team)+'</small>':'<small class="base">SQUADRA PRINCIPALE</small>')+
+                          '</div></article>';
+                    }).join('');
+                    pages.push('<section class="team"><header class="teamhead"><div><p class="brandline">ASD PALLAMANO ARETUSA · ROSA GIOCATORI</p><h2>'+rosterSafe(g.team)+(totalPages>1?' · '+currentPage+'/'+totalPages:'')+'</h2></div><span>'+g.members.length+' giocatori · '+own+' propri'+(refs?' · '+refs+' rinforzi':'')+'</span></header><div class="players">'+cards+'</div><p class="pagefoot">Rosa '+rosterSafe(g.team)+' · '+new Date().toLocaleDateString('it-IT')+' · Documento interno senza presenze</p></section>');
+                }
+                return pages;
             }).join('');
             const markup='<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Aretusa · Rose squadre</title><style>'+
-            '*{box-sizing:border-box}body{margin:0;background:#f1f5f9;font:14px system-ui,Arial;color:#172033}main{max-width:1150px;margin:16px auto;background:#fff;padding:24px;border-radius:16px}h1{font-size:24px;margin:0;color:#155eaa}p.meta{color:#64748b;margin:5px 0 15px}.actions{display:flex;gap:10px;margin-bottom:20px}button{background:#175cd3;color:white;border:0;border-radius:9px;padding:11px 18px;font-weight:700}.team{margin:20px 0 30px;break-inside:avoid}.teamhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:2px solid #d9e9fb;margin-bottom:12px}.teamhead h2{color:#184d90;font-size:19px;margin:0 0 8px}.teamhead span{font-size:11px;color:#475569}.players{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.player{border:1px solid #e2e8f0;border-radius:12px;display:flex;align-items:center;gap:10px;padding:10px;break-inside:avoid;min-width:0}.avatar{width:52px;height:52px;flex:none;border-radius:50%;object-fit:cover;background:#dbeafe}.placeholder{display:flex;justify-content:center;align-items:center;color:#1d4ed8;font-weight:800}.info{min-width:0;display:flex;flex-direction:column;gap:4px}.info strong{font-size:12px;overflow-wrap:anywhere}.info span{font-size:11px;color:#64748b}.info small{font-size:9px;font-weight:800}.reinforce{color:#0369a1}.base{color:#64748b}.privacy{color:#64748b;font-size:10px;margin-top:24px}@media(max-width:700px){main{margin:0;border-radius:0;padding:12px}.players{grid-template-columns:repeat(2,minmax(0,1fr))}.player{padding:7px}.avatar{width:42px;height:42px}.teamhead{flex-wrap:wrap}}@media(max-width:380px){.players{grid-template-columns:1fr}}@page{size:A4 portrait;margin:11mm}@media print{body{background:white}main{padding:0;margin:0}.actions{display:none}.players{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.team{break-before:page}.team:first-of-type{break-before:auto}.player{padding:6px}.avatar{width:45px;height:45px}.privacy{margin-top:10px}}'+
+            '*{box-sizing:border-box}body{margin:0;background:#f1f5f9;font:14px system-ui,Arial;color:#172033}main{max-width:1150px;margin:16px auto;background:#fff;padding:24px;border-radius:16px}h1{font-size:24px;margin:0;color:#155eaa}p.meta{color:#64748b;margin:5px 0 15px}.actions{display:flex;gap:10px;margin-bottom:20px}button{background:#175cd3;color:white;border:0;border-radius:9px;padding:11px 18px;font-weight:700}.team{margin:20px 0 30px;break-inside:avoid}.brandline{font-size:10px;font-weight:800;color:#64748b;letter-spacing:.08em;margin:0 0 5px}.pagefoot{font-size:10px;color:#64748b;text-align:right;margin:12px 0 0}.teamhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:2px solid #d9e9fb;margin-bottom:12px}.teamhead h2{color:#184d90;font-size:19px;margin:0 0 8px}.teamhead span{font-size:11px;color:#475569}.players{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.player{border:1px solid #e2e8f0;border-radius:12px;display:flex;align-items:center;gap:10px;padding:10px;break-inside:avoid;min-width:0}.avatar{width:52px;height:52px;flex:none;border-radius:50%;object-fit:cover;background:#dbeafe}.placeholder{display:flex;justify-content:center;align-items:center;color:#1d4ed8;font-weight:800}.info{min-width:0;display:flex;flex-direction:column;gap:4px}.info strong{font-size:12px;overflow-wrap:anywhere}.info span{font-size:11px;color:#64748b}.info small{font-size:9px;font-weight:800}.reinforce{color:#0369a1}.base{color:#64748b}.privacy{color:#64748b;font-size:10px;margin-top:24px}@media(max-width:700px){main{margin:0;border-radius:0;padding:12px}.players{grid-template-columns:repeat(2,minmax(0,1fr))}.player{padding:7px}.avatar{width:42px;height:42px}.teamhead{flex-wrap:wrap}}@media(max-width:380px){.players{grid-template-columns:1fr}}@page{size:A4 portrait;margin:11mm}@media print{html,body{background:white;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}main{padding:0;margin:0;max-width:none}.actions{display:none}main>h1,main>p.meta,main>p.privacy{display:none}.team{break-before:page;page-break-before:always;break-inside:avoid;page-break-inside:avoid;margin:0;min-height:0}.team:first-of-type{break-before:auto;page-break-before:auto}.teamhead{margin-bottom:10px;padding-bottom:6px}.players{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.player{padding:7px;min-height:58px;border-radius:8px;break-inside:avoid}.avatar{width:44px;height:44px}.info strong{font-size:11px}.info span{font-size:10px}.pagefoot{margin-top:10px}}'+
             '</style></head><body><main><h1>ASD PALLAMANO ARETUSA</h1><p class="meta">Rose per categoria · '+rosters.length+' squadre · '+unique+' giocatori unici · '+new Date().toLocaleDateString('it-IT')+'</p><div class="actions"><button onclick="window.print()">Stampa / Salva PDF</button></div>'+sections+'<p class="privacy">Documento interno. Contiene foto e dati di giocatori: condividere soltanto con persone autorizzate. Le assenze e presenze non sono incluse.</p></main></body></html>';
             w.document.open();w.document.write(markup);w.document.close();
         };
