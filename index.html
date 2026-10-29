@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aretusa Presenze Pro 4.10</title>
+    <title>Aretusa Presenze Pro 4.11</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -583,6 +583,7 @@
                     </div>
                 </div>
 
+                <label class="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5"><input type="checkbox" id="playerHasKit" class="w-4 h-4 accent-emerald-600"><span class="text-sm font-semibold text-emerald-900"><i class="fa-solid fa-shirt mr-1"></i> Equipazione consegnata</span></label>
                 <label class="flex items-center gap-3 bg-slate-900 text-white rounded-2xl p-3"><input type="checkbox" id="playerInactive" class="w-5 h-5 accent-red-500"><span class="text-sm"><b>Giocatore inattivo / non frequenta</b><br><small class="text-slate-300">Resta in archivio, in nero, escluso dai conteggi e dagli appelli futuri.</small></span></label>
                 <div class="pt-6 flex gap-3">
                     <button type="button" id="deletePlayerBtn" onclick="deletePlayer()" class="hidden w-14 bg-red-50 text-red-600 font-bold rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center"><i class="fa-solid fa-trash-can"></i></button>
@@ -1387,6 +1388,7 @@
                         ${player.isNew ? '<span class="bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded badge-new">NUOVO</span>' : ''}
                     </div>
                     <p class="text-xs font-semibold ${isDaAssegnare ? 'text-yellow-600' : 'text-blue-600'} mt-0.5">${player.team} · ${playerBirthYear(player)||'Anno n/d'}${getPlayerPositions(player).length?' · '+reportEsc(getPlayerPositions(player).join(' / ')):''}${teamFilter!=='ALL'&&reinforces(player,teamFilter)?' · 🔁 RINFORZO IN '+teamFilter:''}${entryDateStr}</p><p class="text-[10px] font-semibold text-sky-700">${(player.reinforcementTeams||[]).length?'Rinforzo: '+player.reinforcementTeams.join(', '):''}</p>
+                    <p class="text-[10px] font-semibold mt-1 ${player.hasEquipment===true?'text-emerald-700':'text-slate-500'}">${player.hasEquipment===true?'✓ Equipazione consegnata':'○ Equipazione non consegnata'}</p>
                     ${player.genitore ? `<p class="text-[11px] text-gray-500 mt-0.5 font-medium"><i class="fa-solid fa-user-tie text-gray-400"></i> ${player.genitore}</p>` : ''}
                 `;
 
@@ -1597,6 +1599,7 @@
                 document.getElementById('playerBirth').value = player.dataNascita || '';
                 document.getElementById('playerEntry').value = player.dataIscrizione || '';
                 document.getElementById('playerInactive').checked = isInactive(player);
+                document.getElementById('playerHasKit').checked = player.hasEquipment === true;
                 pendingPlayerPhoto=player.photo||null;
                 renderReinforcementOptions(player.reinforcementTeams||[]);
                 populatePlayerPositions(getPlayerPositions(player));
@@ -1608,6 +1611,7 @@
                 document.getElementById('editPlayerIsNew').value = 'false';
                 document.getElementById('playerEntry').value = new Date().toISOString().split('T')[0];
                 document.getElementById('playerInactive').checked = false;
+                document.getElementById('playerHasKit').checked = false;
                 pendingPlayerPhoto=null;
                 renderReinforcementOptions([]);
                 populatePlayerPositions([]); 
@@ -1637,6 +1641,7 @@
             const birth = document.getElementById('playerBirth').value;
             const entry = document.getElementById('playerEntry').value;
             const inactive = document.getElementById('playerInactive').checked;
+            const hasEquipment = document.getElementById('playerHasKit').checked;
             const reinforcementTeams=[...document.querySelectorAll('.reinforcement-choice:checked')].map(c=>c.value).filter(t=>t!==team);
             const positions=[...document.querySelectorAll('.position-choice:checked')].map(c=>c.value);
 
@@ -1658,6 +1663,7 @@
                     isNew: isNewStr === 'true',
                     reinforcementTeams,
                     positions,
+                    hasEquipment,
                     inactive,
                     active:!inactive,
                     attivo:!inactive
@@ -1675,6 +1681,7 @@
                     photo:pendingPlayerPhoto,
                     reinforcementTeams,
                     positions,
+                    hasEquipment,
                     inactive,
                     active:!inactive,
                     attivo:!inactive,
@@ -1910,6 +1917,7 @@
                           '<div class="info"><strong>'+rosterSafe((p.surname||'')+' '+(p.name||''))+'</strong>'+
                           '<span>'+rosterSafe(g.team)+' · '+rosterSafe(yr)+'</span>'+ 
                           (getPlayerPositions(p).length?'<span class="position">'+rosterSafe(getPlayerPositions(p).join(' / '))+'</span>':'')+
+                          '<small class="kit '+(p.hasEquipment===true?'kit-yes':'kit-no')+'">'+(p.hasEquipment===true?'✓ EQUIPAZIONE CONSEGNATA':'○ EQUIPAZIONE NON CONSEGNATA')+'</small>'+
                           (ref?'<small class="reinforce">RINFORZO DA '+rosterSafe(p.team)+'</small>':'<small class="base">SQUADRA PRINCIPALE</small>')+
                           '</div></article>';
                     }).join('');
@@ -1918,7 +1926,7 @@
                 return pages;
             }).join('');
             const markup='<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Aretusa · Rose squadre</title><style>'+
-            '*{box-sizing:border-box}body{margin:0;background:#f1f5f9;font:14px system-ui,Arial;color:#172033}main{max-width:1150px;margin:16px auto;background:#fff;padding:24px;border-radius:16px}h1{font-size:24px;margin:0;color:#155eaa}p.meta{color:#64748b;margin:5px 0 15px}.actions{display:flex;gap:10px;margin-bottom:20px}button{background:#175cd3;color:white;border:0;border-radius:9px;padding:11px 18px;font-weight:700}.team{margin:20px 0 30px;break-inside:avoid}.brandline{font-size:10px;font-weight:800;color:#64748b;letter-spacing:.08em;margin:0 0 5px}.pagefoot{font-size:10px;color:#64748b;text-align:right;margin:12px 0 0}.teamhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:2px solid #d9e9fb;margin-bottom:12px}.teamhead h2{color:#184d90;font-size:19px;margin:0 0 8px}.teamhead span{font-size:11px;color:#475569}.players{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.player{border:1px solid #e2e8f0;border-radius:12px;display:flex;align-items:center;gap:10px;padding:10px;break-inside:avoid;min-width:0}.avatar{width:52px;height:52px;flex:none;border-radius:50%;object-fit:cover;background:#dbeafe}.placeholder{display:flex;justify-content:center;align-items:center;color:#1d4ed8;font-weight:800}.info{min-width:0;display:flex;flex-direction:column;gap:4px}.info strong{font-size:12px;overflow-wrap:anywhere}.info span{font-size:11px;color:#64748b}.info .position{font-size:10px;color:#1d4ed8;font-weight:650}.info small{font-size:9px;font-weight:800}.reinforce{color:#0369a1}.base{color:#64748b}.privacy{color:#64748b;font-size:10px;margin-top:24px}@media(max-width:700px){main{margin:0;border-radius:0;padding:12px}.players{grid-template-columns:repeat(2,minmax(0,1fr))}.player{padding:7px}.avatar{width:42px;height:42px}.teamhead{flex-wrap:wrap}}@media(max-width:380px){.players{grid-template-columns:1fr}}@page{size:A4 portrait;margin:11mm}@media print{html,body{background:white;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}main{padding:0;margin:0;max-width:none}.actions{display:none}main>h1,main>p.meta,main>p.privacy{display:none}.team{break-before:page;page-break-before:always;break-inside:avoid;page-break-inside:avoid;margin:0;min-height:0}.team:first-of-type{break-before:auto;page-break-before:auto}.teamhead{margin-bottom:10px;padding-bottom:6px}.players{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.player{padding:7px;min-height:58px;border-radius:8px;break-inside:avoid}.avatar{width:44px;height:44px}.info strong{font-size:11px}.info span{font-size:10px}.pagefoot{margin-top:10px}}'+
+            '*{box-sizing:border-box}body{margin:0;background:#f1f5f9;font:14px system-ui,Arial;color:#172033}main{max-width:1150px;margin:16px auto;background:#fff;padding:24px;border-radius:16px}h1{font-size:24px;margin:0;color:#155eaa}p.meta{color:#64748b;margin:5px 0 15px}.actions{display:flex;gap:10px;margin-bottom:20px}button{background:#175cd3;color:white;border:0;border-radius:9px;padding:11px 18px;font-weight:700}.team{margin:20px 0 30px;break-inside:avoid}.brandline{font-size:10px;font-weight:800;color:#64748b;letter-spacing:.08em;margin:0 0 5px}.pagefoot{font-size:10px;color:#64748b;text-align:right;margin:12px 0 0}.teamhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:2px solid #d9e9fb;margin-bottom:12px}.teamhead h2{color:#184d90;font-size:19px;margin:0 0 8px}.teamhead span{font-size:11px;color:#475569}.players{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.player{border:1px solid #e2e8f0;border-radius:12px;display:flex;align-items:center;gap:10px;padding:10px;break-inside:avoid;min-width:0}.avatar{width:52px;height:52px;flex:none;border-radius:50%;object-fit:cover;background:#dbeafe}.placeholder{display:flex;justify-content:center;align-items:center;color:#1d4ed8;font-weight:800}.info{min-width:0;display:flex;flex-direction:column;gap:4px}.info strong{font-size:12px;overflow-wrap:anywhere}.info span{font-size:11px;color:#64748b}.info .position{font-size:10px;color:#1d4ed8;font-weight:650}.kit{font-size:9px;font-weight:750}.kit-yes{color:#047857}.kit-no{color:#64748b}.info small{font-size:9px;font-weight:800}.reinforce{color:#0369a1}.base{color:#64748b}.privacy{color:#64748b;font-size:10px;margin-top:24px}@media(max-width:700px){main{margin:0;border-radius:0;padding:12px}.players{grid-template-columns:repeat(2,minmax(0,1fr))}.player{padding:7px}.avatar{width:42px;height:42px}.teamhead{flex-wrap:wrap}}@media(max-width:380px){.players{grid-template-columns:1fr}}@page{size:A4 portrait;margin:11mm}@media print{html,body{background:white;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}main{padding:0;margin:0;max-width:none}.actions{display:none}main>h1,main>p.meta,main>p.privacy{display:none}.team{break-before:page;page-break-before:always;break-inside:avoid;page-break-inside:avoid;margin:0;min-height:0}.team:first-of-type{break-before:auto;page-break-before:auto}.teamhead{margin-bottom:10px;padding-bottom:6px}.players{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.player{padding:7px;min-height:58px;border-radius:8px;break-inside:avoid}.avatar{width:44px;height:44px}.info strong{font-size:11px}.info span{font-size:10px}.pagefoot{margin-top:10px}}'+
             '</style></head><body><main><h1>ASD PALLAMANO ARETUSA</h1><p class="meta">Rose per categoria · '+rosters.length+' squadre · '+unique+' giocatori unici · '+new Date().toLocaleDateString('it-IT')+'</p><div class="actions"><button onclick="window.print()">Stampa / Salva PDF</button></div>'+sections+'<p class="privacy">Documento interno. Contiene foto e dati di giocatori: condividere soltanto con persone autorizzate. Le assenze e presenze non sono incluse.</p></main></body></html>';
             w.document.open();w.document.write(markup);w.document.close();
         };
