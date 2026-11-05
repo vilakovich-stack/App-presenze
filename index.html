@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aretusa Presenze Pro 4.11</title>
+    <title>Aretusa Presenze Pro 4.12</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -527,6 +527,7 @@
     <div class="flex flex-wrap gap-1.5">
       <button type="button" onclick="document.getElementById('formPhotoCamera').click()" class="bg-blue-700 text-white rounded-lg px-2.5 py-2 text-[11px] font-bold"><i class="fa-solid fa-camera"></i> Scatta foto</button>
       <button type="button" onclick="document.getElementById('formPhotoGallery').click()" class="bg-white text-blue-700 border rounded-lg px-2.5 py-2 text-[11px] font-bold"><i class="fa-solid fa-image"></i> Carica foto</button>
+      <button type="button" id="formDownloadPhoto" onclick="downloadPlayerPhotoFromForm()" title="Scarica la foto" aria-label="Scarica foto profilo" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-2 py-2 text-[11px] font-bold"><i class="fa-solid fa-download"></i></button>
       <button type="button" id="formRemovePhoto" onclick="removePlayerFormPhoto()" class="hidden text-red-600 text-[11px] font-bold px-2 py-2">Rimuovi</button>
     </div>
     <p id="formPhotoHint" class="text-[10px] text-slate-500">Foto compressa automaticamente. Salva la scheda per confermare.</p>
@@ -1394,6 +1395,15 @@
 
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'flex gap-2 z-10';
+                if(player.photo){
+                    const photoDownload=document.createElement('button');
+                    photoDownload.type='button';photoDownload.title='Scarica foto profilo';
+                    photoDownload.setAttribute('aria-label','Scarica foto di '+(player.name||'')+' '+(player.surname||''));
+                    photoDownload.className='w-9 h-9 rounded-full bg-blue-50 text-blue-700 flex items-center justify-center shrink-0';
+                    photoDownload.innerHTML='<i class="fa-solid fa-download text-sm"></i>';
+                    photoDownload.onclick=(event)=>{event.stopPropagation();window.downloadPlayerPhoto(player.id);};
+                    actionsDiv.appendChild(photoDownload);
+                }
 
                 const toggleBtn=document.createElement('button');
                 toggleBtn.type='button';
@@ -1533,6 +1543,8 @@
         function updateFormPhoto(){
             const box=document.getElementById('formPhotoPreview'),remove=document.getElementById('formRemovePhoto');
             box.replaceChildren();
+            const download=document.getElementById('formDownloadPhoto');
+            if(download)download.classList.toggle('hidden',!pendingPlayerPhoto);
             if(pendingPlayerPhoto){
                 const img=document.createElement('img');img.src=pendingPlayerPhoto;
                 img.alt='Foto giocatore';img.className='w-full h-full object-cover';
@@ -1543,6 +1555,37 @@
             }
         }
         window.removePlayerFormPhoto=function(){pendingPlayerPhoto=null;updateFormPhoto();};
+        function safePhotoFilename(player){
+            const raw=[player?.surname,player?.name].filter(Boolean).join('_')||'giocatore';
+            return 'Aretusa_Foto_'+raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,75);
+        }
+        async function downloadProfilePhoto(photo,player){
+            if(!photo){showToast('Nessuna foto disponibile','error');return;}
+            try{
+                let blob;
+                if(typeof photo==='string'&&photo.startsWith('data:image/')){
+                    const r=await fetch(photo);blob=await r.blob();
+                }else if(typeof photo==='string'&&/^https:\/\//i.test(photo)){
+                    const r=await fetch(photo);if(!r.ok)throw Error('Download non disponibile');blob=await r.blob();
+                }else throw Error('Formato foto non supportato');
+                if(!blob.type.startsWith('image/'))throw Error('Il file non è una foto');
+                const ext=blob.type.includes('png')?'png':blob.type.includes('webp')?'webp':'jpg';
+                const url=URL.createObjectURL(blob);
+                const link=document.createElement('a');link.href=url;
+                link.download=safePhotoFilename(player)+'.'+ext;
+                document.body.appendChild(link);link.click();link.remove();
+                setTimeout(()=>URL.revokeObjectURL(url),10000);
+                showToast('Foto pronta per il download');
+            }catch(e){console.error('Download foto:',e);showToast('Impossibile scaricare questa foto','error');}
+        }
+        window.downloadPlayerPhoto=function(id){
+            const p=players.find(x=>x.id===id);
+            if(p)downloadProfilePhoto(p.photo,p);
+        };
+        window.downloadPlayerPhotoFromForm=function(){
+            if(!pendingPlayerPhoto){showToast('Nessuna foto disponibile','error');return;}
+            downloadProfilePhoto(pendingPlayerPhoto,{name:document.getElementById('playerName').value,surname:document.getElementById('playerSurname').value});
+        };
         window.handlePlayerFormPhoto=async function(event){
             const file=event.target.files?.[0];if(!file)return;
             event.target.value='';
