@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aretusa Presenze Pro 4.13</title>
+    <title>Aretusa Presenze Pro 4.14</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -1643,14 +1643,25 @@
                 const text=document.createElement('span');text.textContent=position;label.append(check,text);root.append(label);
             }
         }
+        // Dates in Firestore are YYYY-MM-DD. Keep the regex with a single backslash.
+        const isAttendanceDay=day=>/^\d{4}-\d{2}-\d{2}$/.test(day);
         function playerHistoryRecords(player,year,team){
-            const teams=team==='ALL'?teamsForPlayer(player):[team];
+            // Scan the stored keys, not only the player's current team: preserve
+            // historical attendance after transfers or changes to reinforcement teams.
             const entries=[];
-            for(const day of Object.keys(attendance).sort()){
-                if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(day)||!day.startsWith(year+'-'))continue;
-                for(const category of teams){
-                    const status=teamAttendance(attendance[day],player,category);
-                    if(status==='present'||status==='absent')entries.push({day,category,status});
+            const prefix=player.id+'__REF__';
+            for(const day of Object.keys(attendance).filter(isAttendanceDay).sort()){
+                if(year && !day.startsWith(year+'-'))continue;
+                const records=attendance[day]||{};
+                const own=records[player.id];
+                if((team==='ALL'||team===player.team)&&(own==='present'||own==='absent')){
+                    entries.push({day,category:player.team||'Squadra principale',status:own});
+                }
+                for(const [key,status] of Object.entries(records)){
+                    if(!key.startsWith(prefix)||(status!=='present'&&status!=='absent'))continue;
+                    let category=key.slice(prefix.length);
+                    try{category=decodeURIComponent(category);}catch(e){}
+                    if(team==='ALL'||team===category)entries.push({day,category,status});
                 }
             }
             return entries;
@@ -1662,18 +1673,23 @@
             const year=document.getElementById('playerHistoryYear');
             const teams=document.getElementById('playerHistoryTeam');
             const month=document.getElementById('playerHistoryMonth');
-            const years=[...new Set(Object.keys(attendance).filter(d=>/^\\d{4}-\\d{2}-\\d{2}$/.test(d)).map(d=>d.slice(0,4)))].sort((a,b)=>b.localeCompare(a));
+            const all=playerHistoryRecords(player,null,'ALL');
+            const availableYears=[...new Set(all.map(row=>row.day.slice(0,4)))].sort((a,b)=>b.localeCompare(a));
             const current=String(new Date().getFullYear());
-            if(!years.includes(current))years.unshift(current);
+            if(!availableYears.includes(current))availableYears.push(current);
+            availableYears.sort((a,b)=>b.localeCompare(a));
             year.replaceChildren();
-            years.forEach(y=>year.add(new Option(y,y)));
-            year.value=years[0]||current;
+            availableYears.forEach(y=>year.add(new Option(y,y)));
+            // Select the most recent year with actual records if available.
+            const last=all[all.length-1];
+            year.value=last?.day.slice(0,4)||current;
             teams.replaceChildren(new Option('Tutte le categorie','ALL'));
-            teamsForPlayer(player).forEach(t=>teams.add(new Option(t,t)));
+            const categories=[...new Set([...teamsForPlayer(player),...all.map(row=>row.category)])].filter(Boolean);
+            categories.forEach(t=>teams.add(new Option(t,t)));
             month.replaceChildren();
             const labels=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
             labels.forEach((label,i)=>month.add(new Option(label,String(i+1).padStart(2,'0'))));
-            month.value=String(new Date().getMonth()+1).padStart(2,'0');
+            month.value=last?.day.slice(5,7)||String(new Date().getMonth()+1).padStart(2,'0');
             window.renderPlayerHistory();
         }
         window.renderPlayerHistory=function(){
