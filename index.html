@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aretusa Presenze Pro 4.12</title>
+    <title>Aretusa Presenze Pro 4.13</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -593,6 +593,29 @@
                     </button>
                 </div>
             </form>
+            <section id="playerHistorySection" class="hidden mt-4 border border-blue-100 bg-blue-50/50 rounded-2xl p-3 space-y-3">
+                <div class="flex items-center justify-between gap-2">
+                    <h4 class="text-sm font-extrabold text-slate-800"><i class="fa-solid fa-chart-column mr-1 text-blue-600"></i> Storico presenze del giocatore</h4>
+                    <span class="text-[10px] text-slate-500">Solo dati registrati</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="text-[11px] font-bold text-slate-600">Anno
+                        <select id="playerHistoryYear" onchange="renderPlayerHistory()" class="block w-full mt-1 p-2 border rounded-lg text-xs bg-white"></select>
+                    </label>
+                    <label class="text-[11px] font-bold text-slate-600">Categoria
+                        <select id="playerHistoryTeam" onchange="renderPlayerHistory()" class="block w-full mt-1 p-2 border rounded-lg text-xs bg-white"></select>
+                    </label>
+                </div>
+                <div id="playerHistoryYearSummary" class="text-xs text-slate-600"></div>
+                <div id="playerHistoryMonths" class="grid grid-cols-2 gap-2"></div>
+                <div class="border-t border-blue-100 pt-3 space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <h5 id="playerHistoryMonthTitle" class="font-bold text-sm text-slate-800">Dettaglio mensile</h5>
+                        <select id="playerHistoryMonth" onchange="renderPlayerHistory()" class="bg-white border rounded-lg p-1.5 text-xs font-semibold"></select>
+                    </div>
+                    <div id="playerHistoryDetails" class="space-y-1.5 max-h-60 overflow-y-auto"></div>
+                </div>
+            </section>
         </div>
     </div>
 
@@ -816,6 +839,7 @@
                     attendance[doc.id] = doc.data().records || {};
                 });
                 renderViews();
+                if(!document.getElementById('playerModal').classList.contains('hidden'))window.renderPlayerHistory();
                 attendanceLoaded=true;
                 syncReady();
             }, err => syncError('Firestore attendance',err));
@@ -1619,6 +1643,86 @@
                 const text=document.createElement('span');text.textContent=position;label.append(check,text);root.append(label);
             }
         }
+        function playerHistoryRecords(player,year,team){
+            const teams=team==='ALL'?teamsForPlayer(player):[team];
+            const entries=[];
+            for(const day of Object.keys(attendance).sort()){
+                if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(day)||!day.startsWith(year+'-'))continue;
+                for(const category of teams){
+                    const status=teamAttendance(attendance[day],player,category);
+                    if(status==='present'||status==='absent')entries.push({day,category,status});
+                }
+            }
+            return entries;
+        }
+        function initPlayerHistory(player){
+            const block=document.getElementById('playerHistorySection');
+            block.classList.toggle('hidden',!player);
+            if(!player)return;
+            const year=document.getElementById('playerHistoryYear');
+            const teams=document.getElementById('playerHistoryTeam');
+            const month=document.getElementById('playerHistoryMonth');
+            const years=[...new Set(Object.keys(attendance).filter(d=>/^\\d{4}-\\d{2}-\\d{2}$/.test(d)).map(d=>d.slice(0,4)))].sort((a,b)=>b.localeCompare(a));
+            const current=String(new Date().getFullYear());
+            if(!years.includes(current))years.unshift(current);
+            year.replaceChildren();
+            years.forEach(y=>year.add(new Option(y,y)));
+            year.value=years[0]||current;
+            teams.replaceChildren(new Option('Tutte le categorie','ALL'));
+            teamsForPlayer(player).forEach(t=>teams.add(new Option(t,t)));
+            month.replaceChildren();
+            const labels=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+            labels.forEach((label,i)=>month.add(new Option(label,String(i+1).padStart(2,'0'))));
+            month.value=String(new Date().getMonth()+1).padStart(2,'0');
+            window.renderPlayerHistory();
+        }
+        window.renderPlayerHistory=function(){
+            const playerId=document.getElementById('editPlayerId')?.value;
+            const player=players.find(p=>p.id===playerId);
+            const section=document.getElementById('playerHistorySection');
+            if(!player||section?.classList.contains('hidden'))return;
+            const year=document.getElementById('playerHistoryYear').value;
+            const team=document.getElementById('playerHistoryTeam').value;
+            const month=document.getElementById('playerHistoryMonth').value;
+            const rows=playerHistoryRecords(player,year,team);
+            const p=rows.filter(r=>r.status==='present').length;
+            const a=rows.length-p;
+            const rate=rows.length?Math.round(p/rows.length*100):null;
+            document.getElementById('playerHistoryYearSummary').innerHTML='<div class="grid grid-cols-3 gap-2 text-center">'+
+                '<div class="rounded-xl bg-white p-2"><b class="block text-green-700 text-lg">'+p+'</b>Presenze</div>'+
+                '<div class="rounded-xl bg-white p-2"><b class="block text-red-600 text-lg">'+a+'</b>Assenze</div>'+
+                '<div class="rounded-xl bg-white p-2"><b class="block text-blue-700 text-lg">'+(rate===null?'—':rate+'%')+'</b>Frequenza</div></div>';
+            const groups=document.getElementById('playerHistoryMonths');
+            groups.replaceChildren();
+            const labels=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+            labels.forEach((label,i)=>{
+                const code=String(i+1).padStart(2,'0'),records=rows.filter(r=>r.day.slice(5,7)===code);
+                const present=records.filter(r=>r.status==='present').length;
+                const absent=records.length-present;
+                const percent=records.length?Math.round(present/records.length*100)+'%':'—';
+                const button=document.createElement('button');button.type='button';
+                button.className='text-left rounded-xl border p-2 text-xs '+(code===month?'bg-blue-100 border-blue-400':'bg-white border-slate-200');
+                button.innerHTML='<b class="block text-slate-800">'+label+'</b><span class="text-green-700">'+present+' P</span> · <span class="text-red-600">'+absent+' A</span><span class="float-right font-bold text-slate-600">'+percent+'</span>';
+                button.onclick=()=>{document.getElementById('playerHistoryMonth').value=code;window.renderPlayerHistory();};
+                groups.appendChild(button);
+            });
+            const name=labels[Number(month)-1]||'';
+            const selected=rows.filter(r=>r.day.slice(5,7)===month).sort((a,b)=>b.day.localeCompare(a.day)||a.category.localeCompare(b.category));
+            document.getElementById('playerHistoryMonthTitle').textContent=name+' '+year+' · '+selected.length+' registrazioni';
+            const detail=document.getElementById('playerHistoryDetails');
+            detail.replaceChildren();
+            if(!selected.length){detail.innerHTML='<p class="text-xs text-slate-500 p-2">Nessuna presenza o assenza registrata per questo mese.</p>';return;}
+            selected.forEach(r=>{
+                const line=document.createElement('div');
+                line.className='flex items-center justify-between gap-2 bg-white border rounded-lg px-3 py-2 text-xs';
+                const dateSpan=document.createElement('span');
+                dateSpan.textContent=r.day.slice(8,10)+'/'+r.day.slice(5,7)+'/'+r.day.slice(0,4)+' · '+r.category;
+                const state=document.createElement('span');
+                state.className='font-bold '+(r.status==='present'?'text-green-700':'text-red-600');
+                state.textContent=r.status==='present'?'✓ Presente':'✕ Assente';
+                line.append(dateSpan,state);detail.appendChild(line);
+            });
+        };
         window.openPlayerModal = function(playerId = null) {
             const modal = document.getElementById('playerModal');
             const title = document.getElementById('playerModalTitle');
@@ -1646,6 +1750,7 @@
                 pendingPlayerPhoto=player.photo||null;
                 renderReinforcementOptions(player.reinforcementTeams||[]);
                 populatePlayerPositions(getPlayerPositions(player));
+                initPlayerHistory(player);
                 
                 deleteBtn.classList.remove('hidden');
             } else {
@@ -1657,7 +1762,8 @@
                 document.getElementById('playerHasKit').checked = false;
                 pendingPlayerPhoto=null;
                 renderReinforcementOptions([]);
-                populatePlayerPositions([]); 
+                populatePlayerPositions([]);
+                initPlayerHistory(null); 
                 deleteBtn.classList.add('hidden');
             }
 
